@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+  Two visual languages (see vault: "1500 — Brand & Styling"):
+  - Brand tokens (navy / electric blue / gold) for the platform shell.
+  - Exam tokens — a faithful replica of College Board's Bluebook: neutral chrome,
+    serif content, royal-blue actions. Chrome = sans, question content = serif.
+*/
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-gabarito);
+  --font-serif: var(--font-noto-serif);
+  --font-exam-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  /* 1500 SAT Blueprint brand */
+  --color-navy: #0b2a5b;
+  --color-navy-700: #294879;
+  --color-ink: #1a233e;
+  --color-brand: #3fa9f5;
+  --color-brand-600: #2b8fe0;
+  --color-sky: #7ccbff;
+  --color-ice: #ebf7ff;
+  --color-ice-200: #d7f8ff;
+  --color-gold: #ffbd20;
+  --color-gold-600: #f0a900;
+
+  /* Bluebook-faithful exam tokens */
+  --color-exam-bg: #ffffff;
+  --color-exam-chrome: #e8edf5;
+  --color-exam-banner: #232c63;
+  --color-exam-ink: #1d1d1f;
+  --color-exam-muted: #5c5c60;
+  --color-exam-line: #aab0bb;
+  --color-exam-border: #c6cad3;
+  --color-exam-blue: #1e4fd6;
+  --color-exam-blue-600: #1a44b8;
+  /* Selected-answer fill — Bluebook's royal blue, not a navy. */
+  --color-exam-select: #1d4ed8;
+  --color-exam-tint: #eef3fe;
+  --color-exam-maroon: #8a1c1c;
+  --color-exam-strike: #6c6c70;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #ffffff;
+  --foreground: #1a233e;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-dm-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Bluebook perforated dashed separator (header / footer / question strip). */
+.bb-perf {
+  height: 3px;
+  width: 100%;
+  background-image: repeating-linear-gradient(
+    to right,
+    #000 0 18px,
+    transparent 18px 28px
+  );
+}
+
+/* Visible keyboard focus everywhere (a11y) */
+:focus-visible {
+  outline: 2px solid var(--color-exam-blue);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

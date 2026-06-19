@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# design references (Bluebook + brand screenshots — not part of the shipped app)
+/design-refs
+
 # debug
 npm-debug.log*
 yarn-debug.log*

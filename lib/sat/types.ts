@@ -1,0 +1,79 @@
+// Data model for the Bluebook-style digital SAT emulator.
+// See vault: "1500 — Practice Test Platform (Bluebook Emulator)".
+
+export type SectionId = "rw" | "math";
+export type ModuleVariant = "easy" | "hard";
+export type ChoiceId = "A" | "B" | "C" | "D";
+export type Difficulty = "easy" | "medium" | "hard";
+
+export type Domain =
+  // Reading & Writing
+  | "Information and Ideas"
+  | "Craft and Structure"
+  | "Expression of Ideas"
+  | "Standard English Conventions"
+  // Math
+  | "Algebra"
+  | "Advanced Math"
+  | "Problem-Solving and Data Analysis"
+  | "Geometry and Trigonometry";
+
+export type Choice = { id: ChoiceId; text: string };
+
+type BaseQuestion = {
+  id: string;
+  domain: Domain;
+  difficulty: Difficulty;
+  /** R&W passage / stimulus (left pane), or a Math context line. Optional. */
+  passage?: string;
+  /** The question stem. */
+  prompt: string;
+  /** Why the correct answer is correct (shown on the results review). */
+  explanation: string;
+};
+
+export type MultipleChoiceQuestion = BaseQuestion & {
+  type: "mc";
+  choices: Choice[];
+  correct: ChoiceId;
+  /** Optional per-choice rationale (why each distractor is wrong). */
+  choiceExplanations?: Partial<Record<ChoiceId, string>>;
+};
+
+export type GridInQuestion = BaseQuestion & {
+  type: "grid";
+  /** Accepted answers as raw strings, e.g. ["1.5", "3/2"]. */
+  acceptedAnswers: string[];
+};
+
+export type Question = MultipleChoiceQuestion | GridInQuestion;
+
+export type TestModule = {
+  id: string;
+  order: 1 | 2;
+  /** Set only on module 2 variants. */
+  variant?: ModuleVariant;
+  questions: Question[];
+};
+
+export type Section = {
+  id: SectionId;
+  name: string; // "Reading and Writing" | "Math"
+  shortName: string; // "Reading and Writing" | "Math"
+  minutesPerModule: number; // 32 (R&W) | 35 (Math)
+  module1: TestModule;
+  module2: Record<ModuleVariant, TestModule>;
+};
+
+export type PracticeTest = {
+  id: string;
+  title: string;
+  sections: Section[]; // ordered: [rw, math]
+  /** Fraction correct on module 1 needed to route into the HARD module 2. */
+  routeThreshold: Record<SectionId, number>;
+  /** Minutes for the between-section break. */
+  breakMinutes: number;
+};
+
+export type AnswerValue = ChoiceId | string;
+export type AnswerMap = Record<string, AnswerValue | undefined>;
