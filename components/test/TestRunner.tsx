@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
-import { sampleTest } from "@/lib/sat/sampleTest";
+import type { PracticeTest } from "@/lib/sat/types";
 import { activeModule, activeSection, initialState, makeReducer } from "@/lib/sat/testState";
 import { scoreTest } from "@/lib/sat/scoring";
 import type { Highlight } from "./HighlightablePassage";
@@ -23,8 +23,7 @@ import { ResultsScreen } from "./ResultsScreen";
 
 const STUDENT_NAME = "Shouqi Han";
 
-export function TestRunner() {
-  const test = sampleTest;
+export function TestRunner({ test }: { test: PracticeTest }) {
   const router = useRouter();
   const reducer = useMemo(() => makeReducer(test), [test]);
   const [state, dispatch] = useReducer(reducer, undefined, initialState);

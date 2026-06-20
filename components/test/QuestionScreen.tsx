@@ -161,6 +161,15 @@ export function QuestionScreen(props: Props) {
     </p>
   );
 
+  const figure = question.figureUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={question.figureUrl}
+      alt="Figure for this question"
+      className="mb-4 max-h-80 max-w-full object-contain"
+    />
+  ) : null;
+
   // Reading & Writing with a passage → resizable two-pane on wide screens.
   if (isRW && hasPassage && isWide) {
     return (
@@ -200,7 +209,7 @@ export function QuestionScreen(props: Props) {
         <section className="flex-1 overflow-y-auto px-10 py-8" aria-label="Question">
           <div className="mx-auto max-w-3xl">
             {strip}
-            <div className="mt-4">{prompt}</div>
+            <div className="mt-4">{figure}{prompt}</div>
             <Body {...props} />
           </div>
         </section>
@@ -236,7 +245,7 @@ export function QuestionScreen(props: Props) {
               {question.passage}
             </p>
           ))}
-        <div className="mt-5">{prompt}</div>
+        <div className="mt-5">{figure}{prompt}</div>
         <Body {...props} />
       </div>
     </main>

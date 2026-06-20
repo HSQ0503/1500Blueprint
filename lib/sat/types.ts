@@ -26,6 +26,8 @@ type BaseQuestion = {
   difficulty: Difficulty;
   /** R&W passage / stimulus (left pane), or a Math context line. Optional. */
   passage?: string;
+  /** Public URL (Supabase Storage) of a figure/chart shown with the question. */
+  figureUrl?: string;
   /** The question stem. */
   prompt: string;
   /** Why the correct answer is correct (shown on the results review). */
