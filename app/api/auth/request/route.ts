@@ -4,6 +4,7 @@ import { getMembership } from "@/lib/auth/stripe";
 import { createLoginToken } from "@/lib/auth/tokens";
 import { sendMagicLink } from "@/lib/auth/email";
 import { signSession, sessionCookieOptions } from "@/lib/auth/session";
+import { recordLogin } from "@/lib/auth/users";
 
 const GENERIC_MESSAGE =
   "If that email has an active membership, a login link is on its way.";
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
   // Dev-only bypass: log allowlisted emails straight in, skipping Stripe + Resend
   // + the token table. Inert in production (see isDevBypass).
   if (isDevBypass(email)) {
+    await recordLogin(email, "dev");
     const token = await signSession({ email, plan: "dev" });
     const response = NextResponse.json({ ok: true, redirect: "/practice-test" });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());

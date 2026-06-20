@@ -41,6 +41,27 @@
   --color-exam-tint: #eef3fe;
   --color-exam-maroon: #8a1c1c;
   --color-exam-strike: #6c6c70;
+
+  /* Drill suite: 1500-branded surfaces + semantic feedback colors */
+  --color-mist: #f5f8fc;
+  --color-success: #16a34a;
+  --color-success-600: #15803d;
+  --color-success-bg: #ecfdf5;
+  --color-danger: #dc2626;
+  --color-danger-600: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-flag: #b45309;
+  --color-flag-bg: #fffbeb;
+  --color-paper: #f3f4f6;
+
+  /* Academic surfaces: tight, editorial radii (no soft rounded-SaaS look) */
+  --radius-card: 3px;
+  --radius-chip: 2px;
+
+  --animate-pop-in: pop-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise-in: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.3s ease-out both;
+  --animate-ring-pulse: ring-pulse 1.6s ease-in-out infinite;
 }
 
 :root {
@@ -82,4 +103,49 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---------- Drill suite animations ---------- */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ring-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Staggered reveal for lists / result screens */
+.stagger > * { animation: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger > *:nth-child(2) { animation-delay: 0.09s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.21s; }
+.stagger > *:nth-child(5) { animation-delay: 0.27s; }
+.stagger > *:nth-child(6) { animation-delay: 0.33s; }
+.stagger > *:nth-child(7) { animation-delay: 0.39s; }
+.stagger > *:nth-child(8) { animation-delay: 0.45s; }
+
+/* Shimmer skeleton (grading loader) */
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    rgba(11, 42, 91, 0.06) 25%,
+    rgba(11, 42, 91, 0.13) 37%,
+    rgba(11, 42, 91, 0.06) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
 }

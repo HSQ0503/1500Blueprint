@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth/config";
 import { consumeLoginToken } from "@/lib/auth/tokens";
 import { signSession, sessionCookieOptions } from "@/lib/auth/session";
+import { recordLogin } from "@/lib/auth/users";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -13,6 +14,7 @@ export async function GET(request: Request) {
   const result = await consumeLoginToken(raw);
   if (!result) return NextResponse.redirect(new URL("/login?error=expired", base));
 
+  await recordLogin(result.email, result.plan);
   const token = await signSession({ email: result.email, plan: result.plan });
   const response = NextResponse.redirect(new URL("/practice-test", base));
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
