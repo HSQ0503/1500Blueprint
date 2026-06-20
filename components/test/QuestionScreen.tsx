@@ -175,6 +175,7 @@ export function QuestionScreen(props: Props) {
     return (
       <main ref={containerRef} className="flex flex-1 overflow-hidden">
         <section className="overflow-y-auto px-10 py-8" style={{ width: `${leftPct}%` }} aria-label="Passage">
+          {figure}
           <HighlightablePassage
             text={question.passage ?? ""}
             highlights={highlights}
@@ -209,7 +210,7 @@ export function QuestionScreen(props: Props) {
         <section className="flex-1 overflow-y-auto px-10 py-8" aria-label="Question">
           <div className="mx-auto max-w-3xl">
             {strip}
-            <div className="mt-4">{figure}{prompt}</div>
+            <div className="mt-4">{prompt}</div>
             <Body {...props} />
           </div>
         </section>
@@ -231,6 +232,7 @@ export function QuestionScreen(props: Props) {
         {hasPassage &&
           (isRW ? (
             <div className="mt-5">
+              {figure}
               <HighlightablePassage
                 text={question.passage ?? ""}
                 highlights={highlights}
@@ -245,7 +247,7 @@ export function QuestionScreen(props: Props) {
               {question.passage}
             </p>
           ))}
-        <div className="mt-5">{figure}{prompt}</div>
+        <div className="mt-5">{!(isRW && hasPassage) && figure}{prompt}</div>
         <Body {...props} />
       </div>
     </main>

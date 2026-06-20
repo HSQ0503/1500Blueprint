@@ -112,7 +112,7 @@ export function TestRunner({ test }: { test: PracticeTest }) {
       onOpenReference={() => setOverlay("reference")}
       onOpenCalculator={() => setCalcOpen(true)}
       onOpenLineReader={() => setLineReaderOn(true)}
-      onExit={() => router.push("/")}
+      onExit={() => router.push("/practice-test")}
     />
   );
 

@@ -130,3 +130,13 @@ export async function loadTest(slug: string): Promise<PracticeTest | null> {
     breakMinutes: data.break_minutes,
   };
 }
+
+/** Lightweight list of all tests for the picker (slug + title only, no questions). */
+export async function listTests(): Promise<{ slug: string; title: string }[]> {
+  const { data, error } = await supabase
+    .from("tests")
+    .select("slug,title")
+    .order("slug");
+  if (error || !data) return [];
+  return data;
+}
