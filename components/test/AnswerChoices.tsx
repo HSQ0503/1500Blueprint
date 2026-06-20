@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChoiceId, MultipleChoiceQuestion } from "@/lib/sat/types";
+import { MathText } from "./MathText";
 
 type Props = {
   question: MultipleChoiceQuestion;
@@ -51,7 +52,7 @@ export function AnswerChoices({
                   isEliminated ? "opacity-45" : ""
                 }`}
               >
-                {choice.text}
+                <MathText>{choice.text}</MathText>
               </span>
 
               {/* full-row strike when eliminated */}

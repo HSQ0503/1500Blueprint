@@ -8,8 +8,8 @@ create table if not exists public.tests (
   slug           text unique not null,
   title          text not null,
   break_minutes  int  not null default 10,
-  rw_threshold   real not null default 0.70,   -- route to hard R&W M2 if frac correct >=
-  math_threshold real not null default 0.60,
+  rw_threshold   real not null default 0.63,   -- route to hard R&W M2 if frac correct >= (≈17/27)
+  math_threshold real not null default 0.64,   -- route to hard Math M2 if frac correct >= (≈14/22)
   source_file    text,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()

@@ -68,8 +68,29 @@ function decodeEntities(s: string): string {
 }
 
 /** mammoth HTML → ordered lines, with images as `[[IMG:name]]` markers. */
+// A data table (mammoth emits a real <table>) must keep its structure, not be
+// flattened into a run-on line. Convert it to a Markdown table kept on ONE line
+// (rows joined by a sentinel) so it survives the line split and passage assembly
+// as a single block; the renderer splits the sentinel and emits an HTML <table>.
+const TABLE_ROWSEP = "@@ROW@@";
+
+function tableToMarkdown(tableHtml: string): string {
+  const rows = [...tableHtml.matchAll(/<tr[\s\S]*?<\/tr>/gi)].map((r) => {
+    const cells = [...r[0].matchAll(/<t[hd][\s\S]*?<\/t[hd]>/gi)].map((c) =>
+      decodeEntities(c[0].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim(),
+    );
+    return `| ${cells.join(" | ")} |`;
+  });
+  if (rows.length > 1) {
+    const cols = (rows[0].match(/\|/g)?.length ?? 1) - 1; // markdown header-separator row
+    rows.splice(1, 0, `| ${Array(cols).fill("---").join(" | ")} |`);
+  }
+  return rows.join(TABLE_ROWSEP);
+}
+
 function htmlToLines(html: string): string[] {
   const text = html
+    .replace(/<table[\s\S]*?<\/table>/gi, (t) => `\n${tableToMarkdown(t)}\n`)
     .replace(/<img[^>]*src="__IMG__([^"]+)__"[^>]*>/g, " [[IMG:$1]] ")
     .replace(/<\/(td|th)>/gi, " ") // table cells: separate, don't glue ("means.B." → "means. B.")
     .replace(/<\/(p|h[1-6]|li|tr|div)>/gi, "\n")
@@ -168,9 +189,10 @@ function parseBreadcrumb(block: string) {
 // A choice-start line: "A. text", "A) text", or a bare label "A" (content follows
 // on later lines, e.g. systems-of-equations choices). NOT "A leak ..." (no delimiter).
 function choiceLabel(line: string): { letter: string; inline: string } | null {
-  const m = line.match(/^([A-D])[.)]\s*(.*)$/);
-  if (m) return { letter: m[1], inline: m[2].trim() };
-  if (/^[A-D]$/.test(line)) return { letter: line, inline: "" };
+  // Labels appear upper- or lowercase across forms ("A. x" vs "a) x"); normalize.
+  const m = line.match(/^([A-Da-d])[.)]\s*(.*)$/);
+  if (m) return { letter: m[1].toUpperCase(), inline: m[2].trim() };
+  if (/^[A-D]$/.test(line)) return { letter: line, inline: "" }; // bare label: uppercase only (avoid prose false positives)
   return null;
 }
 
@@ -202,10 +224,11 @@ function parseChoices(body: string[]): { choices: ParsedChoice[]; firstIdx: numb
 
   // Fallback: all four choices inline on a single line.
   const joined = body.join("\n");
-  const re = /(^|\s)([A-D])[.)]\s+/g;
+  const re = /(^|\s)([A-Da-d])[.)]\s+/g;
   const marks: { letter: string; index: number; end: number }[] = [];
   let m: RegExpExecArray | null;
-  while ((m = re.exec(joined))) marks.push({ letter: m[2], index: m.index + m[1].length, end: re.lastIndex });
+  while ((m = re.exec(joined)))
+    marks.push({ letter: m[2].toUpperCase(), index: m.index + m[1].length, end: re.lastIndex });
   const picked: typeof marks = [];
   for (const mk of marks) if (mk.letter === expected[picked.length]) picked.push(mk);
   if (picked.length !== 4) return { choices: [], firstIdx: -1 };
@@ -241,9 +264,10 @@ function parseQuestionBlock(
   let answerRaw: string | null = null;
   for (const raw of lines) {
     const imgs = [...raw.matchAll(/\[\[IMG:([^\]]+)\]\]/g)].map((x) => x[1]);
-    (seenAnswer ? trailing : figures).push(...imgs);
     const line = raw.replace(/\[\[IMG:[^\]]+\]\]/g, "").trim();
     const ans = line.match(ANSWER_RE);
+    // Images on the answer line (or after it) belong to the NEXT question, not this one.
+    (seenAnswer || ans ? trailing : figures).push(...imgs);
     if (ans) {
       answerRaw = ans[1].trim();
       seenAnswer = true;

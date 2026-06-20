@@ -5,6 +5,8 @@ import type { AnswerValue, ChoiceId, Question, Section } from "@/lib/sat/types";
 import { AnswerChoices } from "./AnswerChoices";
 import { GridIn } from "./GridIn";
 import { HighlightablePassage, type Highlight } from "./HighlightablePassage";
+import { MathText } from "./MathText";
+import { QuestionContent } from "./QuestionContent";
 import { BookmarkIcon, BookmarkFilledIcon, DragHandleIcon } from "./icons";
 
 type Props = {
@@ -157,7 +159,7 @@ export function QuestionScreen(props: Props) {
 
   const prompt = (
     <p className="font-serif text-[17px] font-normal leading-7 text-exam-ink">
-      {question.prompt}
+      <MathText>{question.prompt}</MathText>
     </p>
   );
 
@@ -243,9 +245,10 @@ export function QuestionScreen(props: Props) {
               />
             </div>
           ) : (
-            <p className="mt-5 text-center font-serif text-xl text-exam-ink">
-              {question.passage}
-            </p>
+            <QuestionContent
+              text={question.passage ?? ""}
+              pClassName="mt-5 text-center font-serif text-xl text-exam-ink"
+            />
           ))}
         <div className="mt-5">{!(isRW && hasPassage) && figure}{prompt}</div>
         <Body {...props} />

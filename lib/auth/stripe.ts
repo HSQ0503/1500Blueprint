@@ -22,6 +22,15 @@ export async function getMembership(email: string): Promise<Membership> {
   if (!lookup) return { active: false, plan: null };
 
   const customers = await stripe().customers.list({ email: lookup, limit: 100 });
+  if (customers.data.length === 0) return { active: false, plan: null };
+
+  // TEMPORARY (testing only): when MEMBERSHIP_REQUIRE_ACTIVE_SUB=false, any existing
+  // Stripe customer counts as a member — no subscription required. Remove that env
+  // var to restore the active-subscription gate before real students use this.
+  if (process.env.MEMBERSHIP_REQUIRE_ACTIVE_SUB === "false") {
+    return { active: true, plan: "testing" };
+  }
+
   for (const customer of customers.data) {
     const subs = await stripe().subscriptions.list({
       customer: customer.id,

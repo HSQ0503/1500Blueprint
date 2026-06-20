@@ -20,10 +20,11 @@ import { CalculatorPanel } from "./CalculatorPanel";
 import { LineReader } from "./LineReader";
 import { BreakScreen } from "./BreakScreen";
 import { ResultsScreen } from "./ResultsScreen";
+import { DevJumpMenu } from "./DevJumpMenu";
 
 const STUDENT_NAME = "Shouqi Han";
 
-export function TestRunner({ test }: { test: PracticeTest }) {
+export function TestRunner({ test, devMode = false }: { test: PracticeTest; devMode?: boolean }) {
   const router = useRouter();
   const reducer = useMemo(() => makeReducer(test), [test]);
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
@@ -63,8 +64,23 @@ export function TestRunner({ test }: { test: PracticeTest }) {
     }));
   }
 
+  const devMenu = devMode ? (
+    <DevJumpMenu
+      test={test}
+      onJumpModule={(sectionIndex, moduleOrder, variant) =>
+        dispatch({ type: "DEV_JUMP", sectionIndex, moduleOrder, variant })
+      }
+      onJumpResults={() => dispatch({ type: "DEV_RESULTS" })}
+    />
+  ) : null;
+
   if (state.phase === "intro") {
-    return <IntroScreen test={test} onStart={() => dispatch({ type: "START" })} />;
+    return (
+      <>
+        {devMenu}
+        <IntroScreen test={test} onStart={() => dispatch({ type: "START" })} />
+      </>
+    );
   }
   if (state.phase === "moduleOver") {
     return <ModuleOverScreen />;
@@ -81,14 +97,17 @@ export function TestRunner({ test }: { test: PracticeTest }) {
   if (state.phase === "results") {
     const result = scoreTest(test, state.routed, state.answers);
     return (
-      <ResultsScreen
-        test={test}
-        result={result}
-        routed={state.routed}
-        answers={state.answers}
-        perQuestionTime={state.perQuestionTime}
-        onRestart={() => dispatch({ type: "RESTART" })}
-      />
+      <>
+        {devMenu}
+        <ResultsScreen
+          test={test}
+          result={result}
+          routed={state.routed}
+          answers={state.answers}
+          perQuestionTime={state.perQuestionTime}
+          onRestart={() => dispatch({ type: "RESTART" })}
+        />
+      </>
     );
   }
 
@@ -147,6 +166,7 @@ export function TestRunner({ test }: { test: PracticeTest }) {
           onNext={() => dispatch({ type: "SUBMIT_MODULE" })}
         />
         {overlays}
+        {devMenu}
       </div>
     );
   }
@@ -212,6 +232,7 @@ export function TestRunner({ test }: { test: PracticeTest }) {
         navigatorOpen={navOpen}
       />
       {overlays}
+      {devMenu}
     </div>
   );
 }

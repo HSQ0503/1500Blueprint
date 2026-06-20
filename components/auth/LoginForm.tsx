@@ -25,6 +25,10 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         setMessage(data?.message ?? "Something went wrong. Try again.");
         return;
       }
+      if (data?.redirect) {
+        window.location.href = data.redirect;
+        return;
+      }
       setStatus("sent");
       setMessage(data?.message ?? "Check your inbox for a login link.");
     } catch {

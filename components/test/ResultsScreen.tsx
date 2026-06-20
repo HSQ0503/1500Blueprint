@@ -13,6 +13,8 @@ import type {
 import { isCorrect, type TestResult } from "@/lib/sat/scoring";
 import { formatTime } from "@/lib/sat/testState";
 import { Logo } from "@/components/Logo";
+import { MathText } from "./MathText";
+import { QuestionContent } from "./QuestionContent";
 import { CheckIcon, CloseIcon } from "./icons";
 
 type Props = {
@@ -192,12 +194,13 @@ export function ResultsScreen({
                 </div>
 
                 {q.passage && (
-                  <p className="mt-3 whitespace-pre-line border-l-2 border-ice-200 pl-3 text-sm leading-6 text-exam-muted">
-                    {q.passage}
-                  </p>
+                  <QuestionContent
+                    text={q.passage}
+                    pClassName="mt-3 whitespace-pre-line border-l-2 border-ice-200 pl-3 text-sm leading-6 text-exam-muted"
+                  />
                 )}
                 <p className="mt-3 text-[15px] font-medium leading-7 text-ink">
-                  {q.prompt}
+                  <MathText>{q.prompt}</MathText>
                 </p>
 
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -223,12 +226,12 @@ export function ResultsScreen({
 
                 <p className="mt-3 text-sm leading-6 text-ink">
                   <span className="font-semibold">Why: </span>
-                  {q.explanation}
+                  <MathText>{q.explanation}</MathText>
                 </p>
                 {wrongChoiceExplanation && (
                   <p className="mt-1 text-sm leading-6 text-red-700">
                     <span className="font-semibold">Your choice: </span>
-                    {wrongChoiceExplanation}
+                    <MathText>{wrongChoiceExplanation}</MathText>
                   </p>
                 )}
               </li>

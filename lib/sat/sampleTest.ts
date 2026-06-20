@@ -492,7 +492,7 @@ const mathModule2Hard: Question[] = [
 export const sampleTest: PracticeTest = {
   id: "sample-1",
   title: "1500 Blueprint Practice Test 1 (Sample)",
-  routeThreshold: { rw: 0.7, math: 0.6 },
+  routeThreshold: { rw: 0.63, math: 0.64 },
   breakMinutes: 10,
   sections: [
     {

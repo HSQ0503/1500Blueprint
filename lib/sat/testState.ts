@@ -52,7 +52,9 @@ export type TestAction =
   | { type: "ADVANCE" }
   | { type: "END_BREAK" }
   | { type: "TOGGLE_TIMER" }
-  | { type: "RESTART" };
+  | { type: "RESTART" }
+  | { type: "DEV_JUMP"; sectionIndex: number; moduleOrder: 1 | 2; variant?: ModuleVariant }
+  | { type: "DEV_RESULTS" };
 
 export function initialState(): TestState {
   return {
@@ -175,6 +177,25 @@ export function makeReducer(test: PracticeTest) {
         return { ...state, timerHidden: !state.timerHidden };
       case "RESTART":
         return initialState();
+      case "DEV_JUMP": {
+        const section = test.sections[action.sectionIndex];
+        const routed =
+          action.moduleOrder === 2 && action.variant
+            ? { ...state.routed, [section.id]: action.variant }
+            : state.routed;
+        return {
+          ...state,
+          phase: "module",
+          sectionIndex: action.sectionIndex,
+          moduleOrder: action.moduleOrder,
+          routed,
+          qIndex: 0,
+          eliminatorOn: false,
+          timeLeft: section.minutesPerModule * 60,
+        };
+      }
+      case "DEV_RESULTS":
+        return { ...state, phase: "results" };
       default:
         return state;
     }

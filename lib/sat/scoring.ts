@@ -56,6 +56,54 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
+// Raw->scaled conversion, one curve per module-2 path.
+//
+// Real DSAT equating is IRT-based and per-form; College Board publishes no
+// conversion table or item parameters, so this is an APPROXIMATION (the same
+// approach public score calculators use). Curves are monotonic and plateau at
+// the ends; the easy path is capped well below 800 (only the hard path reaches
+// it). Values are tunable and meant to be replaced by Scott's official per-form
+// tables when available. `frac` is fraction correct across BOTH modules.
+type ScaleAnchor = { frac: number; score: number };
+
+const SCALE_CURVES: Record<ModuleVariant, ScaleAnchor[]> = {
+  hard: [
+    { frac: 0, score: 200 },
+    { frac: 0.15, score: 270 },
+    { frac: 0.3, score: 360 },
+    { frac: 0.45, score: 450 },
+    { frac: 0.6, score: 540 },
+    { frac: 0.75, score: 630 },
+    { frac: 0.88, score: 710 },
+    { frac: 0.95, score: 760 },
+    { frac: 1, score: 800 },
+  ],
+  easy: [
+    { frac: 0, score: 200 },
+    { frac: 0.15, score: 240 },
+    { frac: 0.3, score: 310 },
+    { frac: 0.45, score: 380 },
+    { frac: 0.6, score: 450 },
+    { frac: 0.75, score: 520 },
+    { frac: 0.88, score: 580 },
+    { frac: 0.95, score: 600 },
+    { frac: 1, score: 620 },
+  ],
+};
+
+// Linear interpolation between the two anchors surrounding `frac`.
+function interpScore(curve: ScaleAnchor[], frac: number): number {
+  const f = clamp(frac, 0, 1);
+  for (let i = 1; i < curve.length; i++) {
+    const lo = curve[i - 1];
+    const hi = curve[i];
+    if (f <= hi.frac) {
+      return lo.score + ((f - lo.frac) / (hi.frac - lo.frac)) * (hi.score - lo.score);
+    }
+  }
+  return curve[curve.length - 1].score;
+}
+
 export type SectionScore = {
   sectionId: SectionId;
   variant: ModuleVariant;
@@ -73,9 +121,7 @@ export function scoreSection(
   const raw = moduleCorrect(section.module1, answers) + moduleCorrect(mod2, answers);
   const total = section.module1.questions.length + mod2.questions.length;
   const frac = total ? raw / total : 0;
-  // Hard path can reach 800; easy path caps near 600 even at 100% (approx).
-  const span = variant === "hard" ? 600 : 400;
-  const scaled = clamp(roundTo10(200 + frac * span), 200, 800);
+  const scaled = clamp(roundTo10(interpScore(SCALE_CURVES[variant], frac)), 200, 800);
   return { sectionId: section.id, variant, raw, total, scaled };
 }
 

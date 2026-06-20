@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { listTests } from "@/lib/sat/loadTest";
 
 export const metadata = {
@@ -31,15 +32,18 @@ export default async function PracticeTestsPage() {
       <header className="sticky top-0 z-20 border-b border-navy/10 bg-white/80 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-3.5">
           <Logo />
-          <Link
-            href="/drills"
-            className="inline-flex items-center gap-2 rounded-full border border-navy/15 px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-ice"
-          >
-            Practice Drills
-            <span className="rounded-full bg-gold/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-600">
-              Soon
-            </span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/drills"
+              className="inline-flex items-center gap-2 rounded-full border border-navy/15 px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-ice"
+            >
+              Practice Drills
+              <span className="rounded-full bg-gold/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-600">
+                Soon
+              </span>
+            </Link>
+            <SignOutButton />
+          </div>
         </div>
       </header>
 
