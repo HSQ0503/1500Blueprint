@@ -2,6 +2,8 @@
 // catalog. No I/O — everything here is deterministic and unit-testable. The
 // server layer (lib/gamification/state.ts) reads/writes the DB and calls these.
 
+import type { AchievementCategory } from "@/lib/gamification";
+
 export type Stats = {
   xp: number;
   level: number;
@@ -133,7 +135,8 @@ export type Achievement = {
   id: string;
   label: string;
   description: string;
-  glyph: string; // SVG path, drawn from a translated center (see Achievements.tsx)
+  category: AchievementCategory;
+  glyph: string; // SVG path, kept for reference; the hub draws its own family icons
   test: (s: Stats) => boolean;
 };
 
@@ -149,6 +152,7 @@ const GLYPH = {
 
 function tier(
   prefix: string,
+  category: AchievementCategory,
   glyph: string,
   key: keyof Stats,
   rows: { n: number; label: string; desc: string }[],
@@ -157,6 +161,7 @@ function tier(
     id: `${prefix}-${r.n}`,
     label: r.label,
     description: r.desc,
+    category,
     glyph,
     test: (s: Stats) => s[key] >= r.n,
   }));
@@ -164,7 +169,7 @@ function tier(
 
 // 38 achievements across tiered families. Order = display order on the hub.
 export const ACHIEVEMENTS: Achievement[] = [
-  ...tier("xp", GLYPH.star, "xp", [
+  ...tier("xp", "xp", GLYPH.star, "xp", [
     { n: 100, label: "First Points", desc: "Earn your first 100 XP." },
     { n: 250, label: "Warming Up", desc: "Reach 250 total XP." },
     { n: 500, label: "Point Hunter", desc: "Reach 500 total XP." },
@@ -174,7 +179,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     { n: 10000, label: "Ten Thousand Club", desc: "Reach 10,000 total XP." },
     { n: 25000, label: "XP Legend", desc: "Reach 25,000 total XP." },
   ]),
-  ...tier("level", GLYPH.rocket, "level", [
+  ...tier("level", "level", GLYPH.rocket, "level", [
     { n: 2, label: "Level Up", desc: "Reach level 2." },
     { n: 5, label: "Rising Star", desc: "Reach level 5." },
     { n: 10, label: "Double Digits", desc: "Reach level 10." },
@@ -182,7 +187,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     { n: 20, label: "Twenty Strong", desc: "Reach level 20." },
     { n: 25, label: "Apex", desc: "Reach level 25." },
   ]),
-  ...tier("streak", GLYPH.flame, "streakLongest", [
+  ...tier("streak", "streak", GLYPH.flame, "streakLongest", [
     { n: 2, label: "Back Again", desc: "Build a 2-day streak." },
     { n: 3, label: "On Fire", desc: "Build a 3-day streak." },
     { n: 7, label: "Week Warrior", desc: "Build a 7-day streak." },
@@ -191,7 +196,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     { n: 60, label: "Unbreakable", desc: "Build a 60-day streak." },
     { n: 100, label: "Centurion", desc: "Build a 100-day streak." },
   ]),
-  ...tier("drills", GLYPH.hash, "drillsCompleted", [
+  ...tier("drills", "drills", GLYPH.hash, "drillsCompleted", [
     { n: 1, label: "First Drill", desc: "Complete your first drill." },
     { n: 10, label: "Getting Reps", desc: "Complete 10 drills." },
     { n: 25, label: "Quarter Century", desc: "Complete 25 drills." },
@@ -200,13 +205,13 @@ export const ACHIEVEMENTS: Achievement[] = [
     { n: 250, label: "Drill Sergeant", desc: "Complete 250 drills." },
     { n: 500, label: "Five Hundred", desc: "Complete 500 drills." },
   ]),
-  ...tier("tests", GLYPH.cap, "testsCompleted", [
+  ...tier("tests", "tests", GLYPH.cap, "testsCompleted", [
     { n: 1, label: "Test Drive", desc: "Finish a full practice test." },
     { n: 3, label: "Triple", desc: "Finish 3 practice tests." },
     { n: 5, label: "High Five", desc: "Finish 5 practice tests." },
     { n: 10, label: "Marathoner", desc: "Finish 10 practice tests." },
   ]),
-  ...tier("goals", GLYPH.target, "dailyGoalsHit", [
+  ...tier("goals", "goals", GLYPH.target, "dailyGoalsHit", [
     { n: 1, label: "Goal Getter", desc: "Hit your daily goal once." },
     { n: 7, label: "Goal Streak", desc: "Hit your daily goal 7 times." },
     { n: 30, label: "Goal Machine", desc: "Hit your daily goal 30 times." },
@@ -215,6 +220,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: "perfect-drill",
     label: "Sharpshooter",
     description: "Score 100 on a drill.",
+    category: "milestone",
     glyph: GLYPH.target,
     test: (s) => s.perfectDrills >= 1,
   },
@@ -222,6 +228,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: "score-1400",
     label: "1400 Club",
     description: "Score 1400+ on a practice test.",
+    category: "milestone",
     glyph: GLYPH.diamond,
     test: (s) => s.bestTestScore >= 1400,
   },
@@ -229,9 +236,22 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: "score-1500",
     label: "1500 Club",
     description: "Score 1500+ on a practice test.",
+    category: "milestone",
     glyph: GLYPH.diamond,
     test: (s) => s.bestTestScore >= 1500,
   },
+];
+
+// Family metadata for the achievements UI (display order + labels). Icons and
+// colors live in the component.
+export const ACHIEVEMENT_CATEGORIES: { key: AchievementCategory; label: string }[] = [
+  { key: "xp", label: "XP" },
+  { key: "level", label: "Levels" },
+  { key: "streak", label: "Streak" },
+  { key: "drills", label: "Drills" },
+  { key: "tests", label: "Tests" },
+  { key: "goals", label: "Goals" },
+  { key: "milestone", label: "Milestones" },
 ];
 
 // IDs of every achievement satisfied by the given stats.

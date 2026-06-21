@@ -49,9 +49,12 @@ export function QuestionNavigator({
           </div>
 
           <div className="my-3 border-y border-exam-border py-2">
-            <div className="flex items-center justify-center gap-8 text-[14px] text-exam-ink">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[14px] text-exam-ink">
               <span className="flex items-center gap-1.5">
                 <PinIcon className="h-4 w-4 text-exam-ink" /> Current
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-4 w-4 rounded-sm border border-exam-blue bg-exam-blue" /> Answered
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="h-4 w-4 rounded-sm border border-dashed border-exam-ink" /> Unanswered
@@ -80,10 +83,12 @@ export function QuestionNavigator({
                     type="button"
                     onClick={() => onGoto(i)}
                     aria-label={`Question ${i + 1}${isAnswered ? ", answered" : ", unanswered"}`}
-                    className={`flex h-9 w-9 items-center justify-center rounded text-[15px] font-bold text-exam-blue ${
-                      isAnswered || isCurrent
-                        ? "border border-exam-blue/70"
-                        : "border border-dashed border-exam-ink/60"
+                    className={`flex h-9 w-9 items-center justify-center rounded text-[15px] font-bold ${
+                      isAnswered
+                        ? "border border-exam-blue bg-exam-blue text-white"
+                        : isCurrent
+                          ? "border border-exam-blue text-exam-blue"
+                          : "border border-dashed border-exam-ink/60 text-exam-blue"
                     }`}
                   >
                     {i + 1}

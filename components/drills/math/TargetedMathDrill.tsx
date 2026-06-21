@@ -7,6 +7,7 @@ import { DigitalTimer, LivesHud } from "../shared/Hud";
 import { chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
 import { CalculatorIcon, CloseIcon, ReferenceIcon } from "@/components/test/icons";
 import { MathText } from "@/components/test/MathText";
+import { CalculatorPanel } from "@/components/test/CalculatorPanel";
 import { TrophyIcon, XCircleIcon } from "../shared/icons";
 import { DirectionsPanel } from "./DirectionsPanel";
 import {
@@ -204,13 +205,7 @@ export function TargetedMathDrill({
         </Modal>
       ) : null}
 
-      {overlay === "calculator" ? (
-        <Modal title="Calculator" onClose={() => setOverlay(null)}>
-          <div className="flex h-48 items-center justify-center rounded-card border border-dashed border-navy/20 bg-paper/40 text-center text-sm text-navy/45">
-            The Desmos graphing calculator embeds here.
-          </div>
-        </Modal>
-      ) : null}
+      {overlay === "calculator" ? <CalculatorPanel onClose={() => setOverlay(null)} /> : null}
     </DrillShell>
   );
 }

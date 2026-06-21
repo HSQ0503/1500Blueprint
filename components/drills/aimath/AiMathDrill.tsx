@@ -5,6 +5,8 @@ import Link from "next/link";
 import { DrillShell } from "../shared/DrillShell";
 import { chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
 import { CheckCircleIcon, SparkIcon, XCircleIcon } from "../shared/icons";
+import { CalculatorPanel } from "@/components/test/CalculatorPanel";
+import { CalculatorIcon } from "@/components/test/icons";
 import {
   AI_MATH_QUESTIONS,
   gridCorrect,
@@ -23,6 +25,7 @@ export function AiMathDrill() {
   const [revealed, setRevealed] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [done, setDone] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
 
   const q = questions[index];
   const isCorrect = q.kind === "mc" ? selected === q.correct : gridCorrect(answer, q.accepted);
@@ -85,9 +88,19 @@ export function AiMathDrill() {
   );
 
   const right = (
-    <span className="hidden text-sm text-navy/55 sm:inline">
-      <span className="font-semibold tabular-nums text-navy">{accuracy}%</span> accuracy
-    </span>
+    <div className="flex items-center gap-3">
+      <span className="hidden text-sm text-navy/55 sm:inline">
+        <span className="font-semibold tabular-nums text-navy">{accuracy}%</span> accuracy
+      </span>
+      <button
+        type="button"
+        onClick={() => setCalcOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded-card border border-navy/15 px-2.5 py-1.5 text-sm font-semibold text-navy/70 transition-colors hover:bg-navy/5 hover:text-navy"
+      >
+        <CalculatorIcon className="h-4 w-4" />
+        <span className="hidden sm:inline">Calculator</span>
+      </button>
+    </div>
   );
 
   return (
@@ -143,6 +156,7 @@ export function AiMathDrill() {
           )}
         </div>
       </div>
+      {calcOpen ? <CalculatorPanel onClose={() => setCalcOpen(false)} /> : null}
     </DrillShell>
   );
 }

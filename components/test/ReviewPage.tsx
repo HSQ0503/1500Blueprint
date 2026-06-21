@@ -30,7 +30,11 @@ export function ReviewPage({ title, module, answers, marked, onGoto }: Props) {
         <div className="mt-8 rounded-xl border border-exam-border bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-[17px] font-bold text-exam-ink">{title}</h2>
-            <div className="flex items-center gap-6 text-[14px] text-exam-ink">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px] text-exam-ink">
+              <span className="flex items-center gap-1.5">
+                <span className="h-4 w-4 rounded-sm border border-exam-blue bg-exam-blue" />
+                Answered
+              </span>
               <span className="flex items-center gap-1.5">
                 <span className="h-4 w-4 rounded-sm border border-dashed border-exam-ink" />
                 Unanswered
@@ -57,10 +61,10 @@ export function ReviewPage({ title, module, answers, marked, onGoto }: Props) {
                   <button
                     type="button"
                     onClick={() => onGoto(i)}
-                    className={`flex h-9 w-9 items-center justify-center rounded text-[15px] font-bold text-exam-blue ${
+                    className={`flex h-9 w-9 items-center justify-center rounded text-[15px] font-bold ${
                       isAnswered
-                        ? "border border-exam-blue/70"
-                        : "border border-dashed border-exam-ink/60"
+                        ? "border border-exam-blue bg-exam-blue text-white"
+                        : "border border-dashed border-exam-ink/60 text-exam-blue"
                     }`}
                   >
                     {i + 1}

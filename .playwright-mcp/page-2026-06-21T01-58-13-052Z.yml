@@ -1,0 +1,62 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e31] [cursor=pointer]:
+    - img [ref=e32]
+  - alert [ref=e35]
+  - generic [ref=e36]:
+    - banner [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e40]: "Section 1, Module 1: Reading and Writing"
+        - button "Directions" [ref=e41]:
+          - text: Directions
+          - img [ref=e42]
+      - generic [ref=e44]:
+        - generic [ref=e45]: 32:00
+        - button "Hide" [ref=e46]
+      - generic [ref=e47]:
+        - button "Highlights & Notes" [pressed] [ref=e48]:
+          - img [ref=e49]
+          - generic [ref=e52]: Highlights & Notes
+        - button "More" [ref=e54]:
+          - img [ref=e55]
+          - generic [ref=e57]: More
+    - generic [ref=e60]: This Is a Practice Test
+    - main [ref=e62]:
+      - region "Passage" [ref=e63]:
+        - generic [ref=e64]: Traditionally, certain features of cathedral architecture are nearly ______, such as the apse (or recess), which almost all cathedrals include. But cathedrals can also be built to reflect a multitude of different architectural styles, as in the case of the Cathedral of Santa Maria del Fiore, which includes elements from the Gothic and Renaissance styles.
+      - separator [ref=e65]:
+        - img [ref=e67]
+      - region "Question" [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e72]:
+            - generic [ref=e73]:
+              - generic [ref=e74]: "1"
+              - button "Mark for Review" [ref=e75] [cursor=pointer]:
+                - img [ref=e76]
+                - text: Mark for Review
+            - button "Toggle answer eliminator" [ref=e78] [cursor=pointer]:
+              - generic [ref=e79]: ABC
+          - paragraph [ref=e82]: Which choice completes the text with the most logical and precise word or phrase?
+          - list [ref=e84]:
+            - listitem [ref=e85]:
+              - button "A universal" [ref=e86] [cursor=pointer]:
+                - generic [ref=e87]: A
+                - generic [ref=e88]: universal
+            - listitem [ref=e89]:
+              - button "B elaborate" [ref=e90] [cursor=pointer]:
+                - generic [ref=e91]: B
+                - generic [ref=e92]: elaborate
+            - listitem [ref=e93]:
+              - button "C illusory" [ref=e94] [cursor=pointer]:
+                - generic [ref=e95]: C
+                - generic [ref=e96]: illusory
+            - listitem [ref=e97]:
+              - button "D idealized" [ref=e98] [cursor=pointer]:
+                - generic [ref=e99]: D
+                - generic [ref=e100]: idealized
+    - contentinfo [ref=e103]:
+      - generic [ref=e104]: Shouqi Han
+      - button "Question 1 of 27" [ref=e105]:
+        - text: Question 1 of 27
+        - img [ref=e106]
+      - button "Next" [ref=e109]
+    - button "⚡ Dev" [ref=e111]

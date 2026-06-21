@@ -2,10 +2,18 @@
 // Supabase tables (via the service-role admin client) and uses the pure logic in
 // engine.ts. Never import this into a Client Component.
 
-import type { Badge, LeaderRow, NavStats, Player, StreakDay } from "@/lib/gamification";
+import type {
+  AchievementItem,
+  AchievementsView,
+  LeaderRow,
+  NavStats,
+  Player,
+  StreakDay,
+} from "@/lib/gamification";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import {
   ACHIEVEMENTS,
+  ACHIEVEMENT_CATEGORIES,
   advanceStreak,
   dateKey,
   drillXpFor,
@@ -27,7 +35,7 @@ export type HubState = {
   todayIndex: number;
   dailyGoal: { done: number; total: number };
   leaderboard: LeaderRow[];
-  achievements: { unlocked: number; total: number; badges: Badge[] };
+  achievements: AchievementsView;
 };
 
 export type AwardOutcome = { xpAwarded: number; newAchievements: string[] };
@@ -141,18 +149,30 @@ export async function getHubState(email: string): Promise<HubState> {
     };
   });
 
-  // Achievements: read persisted unlocks; the catalog supplies labels + glyphs.
+  // Achievements: read persisted unlocks; the catalog supplies labels + descriptions.
   const { data: ua } = await db
     .from("user_achievements")
     .select("achievement_id")
     .eq("email", email)
     .returns<{ achievement_id: string }[]>();
   const unlocked = new Set((ua ?? []).map((r) => r.achievement_id));
-  const badges: Badge[] = ACHIEVEMENTS.map((a) => ({
-    glyph: a.glyph,
+  const achievementItems: AchievementItem[] = ACHIEVEMENTS.map((a) => ({
+    id: a.id,
     label: a.label,
-    locked: !unlocked.has(a.id),
+    description: a.description,
+    category: a.category,
+    unlocked: unlocked.has(a.id),
   }));
+  const achievementCategories = ACHIEVEMENT_CATEGORIES.map((c) => {
+    const inCat = achievementItems.filter((i) => i.category === c.key);
+    return {
+      key: c.key,
+      label: c.label,
+      unlocked: inCat.filter((i) => i.unlocked).length,
+      total: inCat.length,
+    };
+  });
+  const nextUp = achievementItems.find((i) => !i.unlocked) ?? null;
 
   const player: Player = {
     name: id.name,
@@ -175,7 +195,13 @@ export async function getHubState(email: string): Promise<HubState> {
     todayIndex: mondayIndex(now),
     dailyGoal: { done: drillsToday ?? 0, total: dailyTarget },
     leaderboard,
-    achievements: { unlocked: unlocked.size, total: ACHIEVEMENTS.length, badges },
+    achievements: {
+      unlocked: unlocked.size,
+      total: ACHIEVEMENTS.length,
+      categories: achievementCategories,
+      items: achievementItems,
+      nextUp,
+    },
   };
 }
 

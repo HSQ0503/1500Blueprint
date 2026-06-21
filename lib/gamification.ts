@@ -39,7 +39,39 @@ export type LeaderRow = {
   you: boolean;
 };
 
-export type Badge = { glyph: string; locked: boolean; label: string };
+export type AchievementCategory =
+  | "xp"
+  | "level"
+  | "streak"
+  | "drills"
+  | "tests"
+  | "goals"
+  | "milestone";
+
+// One achievement, with its current unlock state for this student.
+export type AchievementItem = {
+  id: string;
+  label: string;
+  description: string;
+  category: AchievementCategory;
+  unlocked: boolean;
+};
+
+// Per-family roll-up shown as a medallion on the hub card.
+export type AchievementCategorySummary = {
+  key: AchievementCategory;
+  label: string;
+  unlocked: number;
+  total: number;
+};
+
+export type AchievementsView = {
+  unlocked: number;
+  total: number;
+  categories: AchievementCategorySummary[];
+  items: AchievementItem[];
+  nextUp: AchievementItem | null; // closest locked achievement to chase
+};
 
 // Placeholder pattern-of-the-day + per-drill catalog stats (DrillCatalog cards).
 export const patternOfTheDay = {
