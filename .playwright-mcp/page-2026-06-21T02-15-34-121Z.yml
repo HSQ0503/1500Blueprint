@@ -1,0 +1,104 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "1500 SAT Blueprint home" [ref=e5] [cursor=pointer]:
+          - /url: /drills
+          - generic [ref=e6]:
+            - img "1500 SAT Blueprint" [ref=e7]
+            - generic [ref=e11]: 1500 SAT Blueprint
+        - generic [ref=e12]:
+          - link "History" [ref=e13] [cursor=pointer]:
+            - /url: /history
+          - link "Practice Drills" [ref=e14] [cursor=pointer]:
+            - /url: /drills
+          - button "Account menu" [ref=e16]: HS
+    - generic [ref=e18]:
+      - generic [ref=e19]: Bluebook-style digital SAT
+      - heading "Full-length practice tests" [level=1] [ref=e21]
+      - paragraph [ref=e22]: "Each one mirrors the real College Board Bluebook: timed adaptive modules, the same on-screen tools, and a full score report when you finish."
+    - main [ref=e23]:
+      - generic [ref=e24]:
+        - heading "Choose a test" [level=2] [ref=e25]
+        - generic [ref=e27]: 5 tests
+      - list [ref=e28]:
+        - listitem [ref=e29]:
+          - link "1 Practice Test 1 R&W + Math 4 modules ~2h 14m Not started Start" [ref=e30] [cursor=pointer]:
+            - /url: /practice-test/practice-test-1
+            - generic [ref=e31]: "1"
+            - generic [ref=e32]:
+              - heading "Practice Test 1" [level=3] [ref=e33]
+              - generic [ref=e34]:
+                - generic [ref=e35]: R&W + Math
+                - generic [ref=e36]: 4 modules
+                - generic [ref=e37]: ~2h 14m
+                - generic [ref=e38]: Not started
+            - generic [ref=e39]:
+              - text: Start
+              - img [ref=e40]
+        - listitem [ref=e42]:
+          - link "2 Practice Test 2 R&W + Math 4 modules ~2h 14m Not started Start" [ref=e43] [cursor=pointer]:
+            - /url: /practice-test/practice-test-2
+            - generic [ref=e44]: "2"
+            - generic [ref=e45]:
+              - heading "Practice Test 2" [level=3] [ref=e46]
+              - generic [ref=e47]:
+                - generic [ref=e48]: R&W + Math
+                - generic [ref=e49]: 4 modules
+                - generic [ref=e50]: ~2h 14m
+                - generic [ref=e51]: Not started
+            - generic [ref=e52]:
+              - text: Start
+              - img [ref=e53]
+        - listitem [ref=e55]:
+          - link "3 Practice Test 3 R&W + Math 4 modules ~2h 14m Not started Start" [ref=e56] [cursor=pointer]:
+            - /url: /practice-test/practice-test-3
+            - generic [ref=e57]: "3"
+            - generic [ref=e58]:
+              - heading "Practice Test 3" [level=3] [ref=e59]
+              - generic [ref=e60]:
+                - generic [ref=e61]: R&W + Math
+                - generic [ref=e62]: 4 modules
+                - generic [ref=e63]: ~2h 14m
+                - generic [ref=e64]: Not started
+            - generic [ref=e65]:
+              - text: Start
+              - img [ref=e66]
+        - listitem [ref=e68]:
+          - link "4 Practice Test 4 R&W + Math 4 modules ~2h 14m Not started Start" [ref=e69] [cursor=pointer]:
+            - /url: /practice-test/practice-test-4
+            - generic [ref=e70]: "4"
+            - generic [ref=e71]:
+              - heading "Practice Test 4" [level=3] [ref=e72]
+              - generic [ref=e73]:
+                - generic [ref=e74]: R&W + Math
+                - generic [ref=e75]: 4 modules
+                - generic [ref=e76]: ~2h 14m
+                - generic [ref=e77]: Not started
+            - generic [ref=e78]:
+              - text: Start
+              - img [ref=e79]
+        - listitem [ref=e81]:
+          - link "5 Practice Test 5 R&W + Math 4 modules ~2h 14m Not started Start" [ref=e82] [cursor=pointer]:
+            - /url: /practice-test/practice-test-5
+            - generic [ref=e83]: "5"
+            - generic [ref=e84]:
+              - heading "Practice Test 5" [level=3] [ref=e85]
+              - generic [ref=e86]:
+                - generic [ref=e87]: R&W + Math
+                - generic [ref=e88]: 4 modules
+                - generic [ref=e89]: ~2h 14m
+                - generic [ref=e90]: Not started
+            - generic [ref=e91]:
+              - text: Start
+              - img [ref=e92]
+      - link "Short on time? Run a Drill instead Targeted skill reps with instant AI feedback. Earn XP without the 2-hour commitment." [ref=e94] [cursor=pointer]:
+        - /url: /drills
+        - img [ref=e96]
+        - generic [ref=e98]:
+          - heading "Short on time? Run a Drill instead" [level=3] [ref=e99]
+          - paragraph [ref=e100]: Targeted skill reps with instant AI feedback. Earn XP without the 2-hour commitment.
+    - contentinfo [ref=e101]: 1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College Board.
+  - button "Open Next.js Dev Tools" [ref=e107] [cursor=pointer]:
+    - img [ref=e108]
+  - alert [ref=e111]

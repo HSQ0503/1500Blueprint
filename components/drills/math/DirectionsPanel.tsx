@@ -109,8 +109,8 @@ export function DirectionsPanel() {
 
       <p className="mt-7 text-center font-serif text-base font-semibold text-exam-ink">Examples</p>
 
-      <div className="mt-3 overflow-hidden rounded-card border border-navy/20">
-        <table className="w-full border-collapse text-center">
+      <div className="mt-3 overflow-x-auto rounded-card border border-navy/20">
+        <table className="w-full min-w-[440px] border-collapse text-center">
           <thead>
             <tr className="bg-paper/60">
               <th className={`${label} border-b border-navy/20 px-3 py-2.5 text-navy/70`}>Answer</th>

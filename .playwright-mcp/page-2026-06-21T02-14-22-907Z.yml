@@ -1,0 +1,308 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "1500 SAT Blueprint home" [ref=e5] [cursor=pointer]:
+          - /url: /drills
+          - generic [ref=e6]:
+            - img "1500 SAT Blueprint" [ref=e7]
+            - generic [ref=e11]: 1500 SAT Blueprint
+        - generic [ref=e12]:
+          - link "History" [ref=e13] [cursor=pointer]:
+            - /url: /history
+          - link "Practice Tests" [ref=e14] [cursor=pointer]:
+            - /url: /practice-test
+          - button "Account menu" [ref=e16]: HS
+    - generic [ref=e17]:
+      - generic: "1500"
+      - generic [ref=e18]:
+        - generic [ref=e19]: Season 4 · Spring Sprint
+        - heading "Welcome back, Hsq0503." [level=1] [ref=e20]
+        - paragraph [ref=e21]:
+          - text: You're
+          - strong [ref=e22]: "#1"
+          - text: on the weekly board. Keep the streak alive and stay on top.
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: HS
+          - generic [ref=e28]: LVL 2
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - heading "Hsq0503" [level=2] [ref=e31]
+            - generic [ref=e32]: admin
+          - generic [ref=e34]:
+            - generic [ref=e35]: 220 / 225 XP
+            - generic [ref=e36]: 5 to Level 3
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]: Daily Streak
+          - generic [ref=e43]:
+            - img [ref=e44]
+            - text: "1"
+        - generic [ref=e46]:
+          - generic [ref=e49]: Mon
+          - generic [ref=e52]: Tue
+          - generic [ref=e55]: Wed
+          - generic [ref=e58]: Thu
+          - generic [ref=e61]: Fri
+          - generic [ref=e62]:
+            - generic [ref=e63]: ✓
+            - generic [ref=e64]: Sat
+          - generic [ref=e67]: Sun
+      - generic [ref=e68]:
+        - generic [ref=e70]:
+          - generic [ref=e71]: "1"
+          - generic [ref=e72]: of 5
+        - generic [ref=e73]:
+          - generic [ref=e74]: Daily Goal
+          - generic [ref=e75]:
+            - text: 4 more drills
+            - text: to keep the flame
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - heading "Weekly Leaderboard" [level=3] [ref=e79]
+          - generic [ref=e80]: Resets Sun
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - generic [ref=e83]: "1"
+            - generic [ref=e84]: HS
+            - generic [ref=e85]: You
+            - generic [ref=e86]: "220"
+          - generic [ref=e87]:
+            - generic [ref=e88]: "2"
+            - generic [ref=e89]: HA
+            - generic [ref=e90]: Han
+            - generic [ref=e91]: "40"
+        - generic [ref=e92]:
+          - text: You're
+          - strong [ref=e93]: "#1"
+          - text: · top of the board
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - heading "Achievements" [level=3] [ref=e97]
+            - generic [ref=e98]: 5 of 38 unlocked
+          - button "Show all" [ref=e99]:
+            - text: Show all
+            - img [ref=e100]
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - img [ref=e106]
+              - generic [ref=e108]:
+                - generic [ref=e109]: XP
+                - generic [ref=e110]: 1/8
+            - generic [ref=e111]:
+              - img [ref=e113]
+              - generic [ref=e115]:
+                - generic [ref=e116]: Levels
+                - generic [ref=e117]: 1/6
+            - generic [ref=e118]:
+              - img [ref=e120]
+              - generic [ref=e122]:
+                - generic [ref=e123]: Streak
+                - generic [ref=e124]: 0/7
+            - generic [ref=e125]:
+              - img [ref=e127]
+              - generic [ref=e129]:
+                - generic [ref=e130]: Drills
+                - generic [ref=e131]: 1/7
+            - generic [ref=e132]:
+              - img [ref=e134]
+              - generic [ref=e137]:
+                - generic [ref=e138]: Tests
+                - generic [ref=e139]: 0/4
+            - generic [ref=e140]:
+              - img [ref=e142]
+              - generic [ref=e146]:
+                - generic [ref=e147]: Goals
+                - generic [ref=e148]: 1/3
+            - generic [ref=e149]:
+              - img [ref=e151]
+              - generic [ref=e154]:
+                - generic [ref=e155]: Milestones
+                - generic [ref=e156]: 1/3
+          - button "Next up Warming Up" [ref=e157]:
+            - img [ref=e159]
+            - generic [ref=e161]:
+              - generic [ref=e162]: Next up
+              - generic [ref=e163]: Warming Up
+    - generic [ref=e164]:
+      - generic [ref=e165]:
+        - heading "Practice Drills" [level=2] [ref=e166]
+        - generic [ref=e167]: Earn XP. Build streaks. Master one pattern at a time.
+      - heading "Writing" [level=3] [ref=e169]
+      - generic [ref=e171]:
+        - generic [ref=e172]:
+          - generic [ref=e173]:
+            - img [ref=e175]
+            - generic [ref=e178]:
+              - generic [ref=e179]: Writing · AI
+              - heading "Grammar Drill" [level=4] [ref=e180]
+          - paragraph [ref=e181]: Master grammar patterns by writing out your reasoning, graded on process, not just the pick.
+          - generic [ref=e183]:
+            - generic [ref=e184]: 9 / 25 patterns mastered
+            - generic [ref=e185]:
+              - img [ref=e186]
+              - text: 5 streak
+          - generic [ref=e190]:
+            - link "Start · +50 XP" [ref=e191] [cursor=pointer]:
+              - /url: /drills/grammar
+              - img [ref=e192]
+              - text: Start · +50 XP
+            - link "History" [ref=e194] [cursor=pointer]:
+              - /url: /drills/grammar
+        - generic [ref=e195]:
+          - generic: +
+          - generic [ref=e196]: Pattern of the day
+          - heading "Verb tense & sequence" [level=4] [ref=e197]
+          - paragraph [ref=e198]:
+            - text: Nail this one twice in a row for a
+            - strong [ref=e199]: 2× XP
+            - text: bonus and a fresh badge.
+          - link "Take the challenge" [ref=e200] [cursor=pointer]:
+            - /url: /drills/grammar
+      - heading "Reading" [level=3] [ref=e202]
+      - generic [ref=e204]:
+        - generic [ref=e205]:
+          - generic [ref=e206]:
+            - img [ref=e208]
+            - generic [ref=e210]:
+              - generic [ref=e211]: Reading · AI
+              - heading "Reading Comprehension" [level=4] [ref=e212]
+          - paragraph [ref=e213]: Comprehend hard SAT passages under time pressure, then recall the gist from memory.
+          - generic [ref=e215]:
+            - generic [ref=e216]: Level 1 · 2 attempts
+            - generic [ref=e217]: "Next: Level 2"
+          - generic [ref=e220]:
+            - link "Start · +40 XP" [ref=e221] [cursor=pointer]:
+              - /url: /drills/reading
+              - img [ref=e222]
+              - text: Start · +40 XP
+            - link "History" [ref=e224] [cursor=pointer]:
+              - /url: /drills/reading
+        - generic [ref=e225]:
+          - generic [ref=e226]:
+            - img [ref=e228]
+            - generic [ref=e232]:
+              - generic [ref=e233]: Reading · Speed
+              - heading "Word Scan Drill" [level=4] [ref=e234]
+          - paragraph [ref=e235]: Train your eye to spot elimination keywords before the timer drains. Pure speed reps.
+          - generic [ref=e236]:
+            - generic [ref=e237]:
+              - strong [ref=e238]: —
+              - text: Ceased
+            - generic [ref=e239]:
+              - strong [ref=e240]: —
+              - text: Bad Mold
+          - generic [ref=e241]:
+            - link "Ceased" [ref=e242] [cursor=pointer]:
+              - /url: /drills/word-scan?mode=ceased
+            - link "Bad Mold" [ref=e243] [cursor=pointer]:
+              - /url: /drills/word-scan?mode=bad-mold
+      - heading "Math" [level=3] [ref=e245]
+      - generic [ref=e247]:
+        - generic [ref=e248]:
+          - generic [ref=e249]:
+            - img [ref=e251]
+            - generic [ref=e255]:
+              - generic [ref=e256]:
+                - text: Math
+                - generic [ref=e257]: · Medium
+              - heading "Targeted Math" [level=4] [ref=e258]
+          - paragraph [ref=e259]: Get 10 right before you lose all 3 lives.
+          - generic [ref=e260]:
+            - generic [ref=e261]:
+              - strong [ref=e262]: 100%
+              - text: acc
+            - generic [ref=e263]:
+              - strong [ref=e264]: 27s
+              - text: avg
+          - link "Start Challenge" [ref=e265] [cursor=pointer]:
+            - /url: /drills/targeted-math?difficulty=medium
+        - generic [ref=e266]:
+          - generic [ref=e267]:
+            - img [ref=e269]
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - text: Math
+                - generic [ref=e275]: · Hard
+              - heading "Targeted Math" [level=4] [ref=e276]
+          - paragraph [ref=e277]: Same rules, brutal questions. For 1500-chasers.
+          - generic [ref=e278]:
+            - generic [ref=e279]:
+              - strong [ref=e280]: 33%
+              - text: acc
+            - generic [ref=e281]:
+              - strong [ref=e282]: 5s
+              - text: avg
+          - link "Start Challenge" [ref=e283] [cursor=pointer]:
+            - /url: /drills/targeted-math?difficulty=hard
+        - generic [ref=e284]:
+          - generic [ref=e285]:
+            - img [ref=e287]
+            - generic [ref=e289]:
+              - generic [ref=e290]:
+                - text: Math
+                - generic [ref=e291]: · Beta
+              - heading "AI Math" [level=4] [ref=e292]
+          - paragraph [ref=e293]: Fresh AI-generated questions tuned to your weak spots.
+          - generic [ref=e294]:
+            - generic [ref=e295]:
+              - strong [ref=e296]: 67%
+              - text: acc
+            - generic [ref=e297]:
+              - strong [ref=e298]: 1,388
+              - text: pool
+          - link "Start Practice" [ref=e299] [cursor=pointer]:
+            - /url: /drills/ai-math
+      - heading "Vocabulary" [level=3] [ref=e301]
+      - generic [ref=e303]:
+        - generic [ref=e304]:
+          - generic [ref=e305]:
+            - img [ref=e307]
+            - generic [ref=e310]:
+              - generic [ref=e311]: Vocabulary
+              - heading "Vocab Drill" [level=4] [ref=e312]
+          - paragraph [ref=e313]: Match definitions to terms in a timed session. Beat your best streak.
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - strong [ref=e316]: "1000"
+              - text: words
+            - generic [ref=e317]:
+              - strong [ref=e318]: "0"
+              - text: mastered
+            - generic [ref=e319]:
+              - strong [ref=e320]: "0"
+              - text: best streak
+          - generic [ref=e321]:
+            - link "Start · +30 XP" [ref=e322] [cursor=pointer]:
+              - /url: /drills/vocab
+              - img [ref=e323]
+              - text: Start · +30 XP
+            - link "Progress" [ref=e325] [cursor=pointer]:
+              - /url: /drills/vocab
+        - generic [ref=e326]:
+          - generic [ref=e327]:
+            - img [ref=e329]
+            - generic [ref=e332]:
+              - generic [ref=e333]: Vocabulary
+              - heading "Vocab Flashcards" [level=4] [ref=e334]
+          - paragraph [ref=e335]: Review the words you save from the Vocab Drill with spaced repetition.
+          - generic [ref=e336]:
+            - generic [ref=e337]:
+              - strong [ref=e338]: "0"
+              - text: in deck
+            - generic [ref=e339]:
+              - strong [ref=e340]: "0"
+              - text: due
+          - generic [ref=e341]:
+            - link "Instructions" [ref=e342] [cursor=pointer]:
+              - /url: /drills/flashcards
+            - link "Manage" [ref=e343] [cursor=pointer]:
+              - /url: /drills/flashcards
+    - contentinfo [ref=e344]: 1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College Board.
+  - button "Open Next.js Dev Tools" [ref=e350] [cursor=pointer]:
+    - img [ref=e351]

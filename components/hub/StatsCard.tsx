@@ -15,8 +15,8 @@ export function StatsCard({ player, weeklyStreak, todayIndex, dailyGoal }: Props
   const goalPct = dailyGoal.total > 0 ? Math.round((dailyGoal.done / dailyGoal.total) * 100) : 0;
 
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-6">
-      <div className="relative z-[2] -mt-[58px] flex flex-wrap items-center gap-6 rounded-2xl border border-navy/12 bg-white px-6 py-[22px] shadow-[0_12px_40px_rgba(7,25,59,0.12)]">
+    <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6">
+      <div className="relative z-[2] -mt-10 flex flex-wrap items-center gap-4 rounded-2xl border border-navy/12 bg-white px-4 py-5 shadow-[0_12px_40px_rgba(7,25,59,0.12)] sm:-mt-[58px] sm:gap-6 sm:px-6 sm:py-[22px]">
         {/* avatar + level ring + XP bar */}
         <div className="flex min-w-[230px] flex-1 items-center gap-4">
           <div

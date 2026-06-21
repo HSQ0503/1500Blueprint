@@ -33,7 +33,7 @@ export function DrillShell({
   return (
     <div className="flex min-h-dvh flex-col bg-paper text-ink">
       <header className="sticky top-0 z-30 border-b border-navy/12 bg-white">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-2.5 sm:px-6">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-3 py-2 sm:gap-3 sm:px-6 sm:py-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {onExit ? (
               <button type="button" onClick={onExit} className={exitClasses}>
@@ -57,9 +57,9 @@ export function DrillShell({
             </div>
           </div>
           {center ? (
-            <div className="flex shrink-0 items-center justify-center">{center}</div>
+            <div className="flex min-w-0 shrink items-center justify-center">{center}</div>
           ) : null}
-          <div className="flex flex-1 items-center justify-end gap-2">{right}</div>
+          <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">{right}</div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">

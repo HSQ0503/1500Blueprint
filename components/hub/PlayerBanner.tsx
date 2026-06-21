@@ -15,13 +15,13 @@ export function PlayerBanner({ player }: { player: Player }) {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-8 -top-10 font-display font-black leading-none tracking-[-0.04em]"
-        style={{ fontSize: "240px", color: "rgba(255,255,255,0.04)" }}
+        style={{ fontSize: "clamp(120px, 42vw, 240px)", color: "rgba(255,255,255,0.04)" }}
       >
         1500
       </div>
-      <div className="relative mx-auto w-full max-w-[1120px] px-6 pb-[78px] pt-[30px]">
+      <div className="relative mx-auto w-full max-w-[1120px] px-5 pb-[64px] pt-[26px] sm:px-6 sm:pb-[78px] sm:pt-[30px]">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky">{player.season}</div>
-        <h1 className="mt-2.5 font-display text-[34px] font-extrabold leading-[1.05] tracking-[-0.02em] text-white">
+        <h1 className="mt-2.5 font-display text-[26px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[34px] sm:leading-[1.05]">
           Welcome back, {player.firstName}.
         </h1>
         <p className="mt-2 max-w-[460px] text-[15px] leading-[1.55] text-white/70">

@@ -60,10 +60,10 @@ export default async function PracticeTestsPage() {
             "linear-gradient(130deg,#07193b 0%,#0b2a5b 42%,#1b46a8 74%,#0b2a5b 100%)",
         }}
       >
-        <div className="mx-auto w-full max-w-[980px] px-6 pb-9 pt-[30px]">
+        <div className="mx-auto w-full max-w-[980px] px-5 pb-9 pt-[30px] sm:px-6">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky">Bluebook-style digital SAT</div>
           <div className="mt-3 h-0.5 w-[46px] bg-gold" />
-          <h1 className="mt-3.5 font-display text-[38px] font-extrabold leading-[1.05] tracking-[-0.02em] text-white">
+          <h1 className="mt-3.5 font-display text-[28px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[38px] sm:leading-[1.05]">
             Full-length practice tests
           </h1>
           <p className="mt-2.5 max-w-[560px] text-[15px] leading-[1.55] text-white/70">

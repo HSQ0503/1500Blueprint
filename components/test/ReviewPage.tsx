@@ -14,8 +14,8 @@ type Props = {
 export function ReviewPage({ title, module, answers, marked, onGoto }: Props) {
   return (
     <main className="flex-1 overflow-y-auto bg-exam-bg font-exam-sans">
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        <h1 className="text-center text-[34px] font-semibold text-exam-ink">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+        <h1 className="text-center text-[26px] font-semibold text-exam-ink sm:text-[34px]">
           Check Your Work
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-center text-[15px] leading-7 text-exam-ink">
@@ -27,7 +27,7 @@ export function ReviewPage({ title, module, answers, marked, onGoto }: Props) {
           you&rsquo;re ready to move on.
         </p>
 
-        <div className="mt-8 rounded-xl border border-exam-border bg-white p-6 shadow-sm">
+        <div className="mt-8 rounded-xl border border-exam-border bg-white p-4 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-[17px] font-bold text-exam-ink">{title}</h2>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px] text-exam-ink">
@@ -48,7 +48,7 @@ export function ReviewPage({ title, module, answers, marked, onGoto }: Props) {
 
           <div className="my-4 border-t border-exam-border" />
 
-          <ul className="grid grid-cols-8 gap-x-4 gap-y-5 sm:grid-cols-12">
+          <ul className="grid grid-cols-6 gap-x-3 gap-y-4 sm:grid-cols-8 sm:gap-x-4 sm:gap-y-5 md:grid-cols-12">
             {module.questions.map((q, i) => {
               const isAnswered =
                 answers[q.id] != null && String(answers[q.id]).trim() !== "";

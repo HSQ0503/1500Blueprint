@@ -133,7 +133,9 @@ export function QuestionScreen(props: Props) {
   const dragging = useRef(false);
 
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
+    // Two-pane (passage | question) only on true desktop widths — below this the
+    // split panes are too narrow to read, so we fall back to a single column.
+    const mq = window.matchMedia("(min-width: 1024px)");
     const update = () => setIsWide(mq.matches);
     update();
     mq.addEventListener("change", update);

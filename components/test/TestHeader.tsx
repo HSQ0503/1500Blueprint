@@ -52,10 +52,10 @@ export function TestHeader(props: Props) {
 
   return (
     <div className="font-exam-sans">
-      <header className="flex items-stretch justify-between gap-4 bg-exam-chrome px-5 py-2.5">
+      <header className="flex items-stretch justify-between gap-2 bg-exam-chrome px-3 py-2 sm:gap-4 sm:px-5 sm:py-2.5">
         {/* Left: module + directions */}
         <div className="flex min-w-0 flex-1 flex-col justify-center">
-          <span className="truncate text-[18px] font-semibold leading-tight text-exam-ink">
+          <span className="truncate text-[15px] font-semibold leading-tight text-exam-ink sm:text-[18px]">
             {moduleLabel}
           </span>
           <button
@@ -82,7 +82,7 @@ export function TestHeader(props: Props) {
           ) : (
             <>
               <span
-                className={`text-[22px] font-semibold leading-none tabular-nums ${
+                className={`text-[18px] font-semibold leading-none tabular-nums sm:text-[22px] ${
                   warning ? "text-exam-maroon" : "text-exam-ink"
                 }`}
               >
@@ -131,7 +131,7 @@ export function TestHeader(props: Props) {
                   onClick={() => setMenuOpen(false)}
                   className="fixed inset-0 z-30 cursor-default"
                 />
-                <div className="absolute right-0 top-full z-40 mt-1 w-60 overflow-hidden rounded-lg border border-exam-border bg-white py-1 shadow-xl">
+                <div className="absolute right-0 top-full z-40 mt-1 w-60 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-exam-border bg-white py-1 shadow-xl">
                   <MenuItem icon={<HelpIcon className="h-5 w-5" />} onClick={() => setMenuOpen(false)}>
                     Help
                   </MenuItem>
@@ -186,11 +186,13 @@ function Tool({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="flex w-[88px] flex-col items-center gap-0.5 rounded-md px-1 py-1 text-exam-ink hover:bg-black/5"
+      aria-label={label}
+      title={label}
+      className="flex w-12 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 text-exam-ink hover:bg-black/5 sm:w-[88px] sm:py-1"
     >
       {icon}
       <span
-        className={`text-center text-[12px] leading-tight ${
+        className={`hidden text-center text-[12px] leading-tight sm:block ${
           active ? "font-bold text-exam-blue underline underline-offset-4" : "font-semibold"
         }`}
       >

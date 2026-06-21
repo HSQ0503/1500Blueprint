@@ -125,11 +125,11 @@ export function TargetedMathDrill({
   }
 
   const center = (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 sm:gap-3">
       <LivesHud total={START_LIVES} remaining={Math.max(0, lives)} />
-      <span className="text-sm font-semibold tabular-nums text-navy">
+      <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-navy">
         {correct} / {WIN_TARGET}
-        <span className="ml-1 font-normal text-navy/45">correct</span>
+        <span className="ml-1 hidden font-normal text-navy/45 sm:inline">correct</span>
       </span>
       <DigitalTimer seconds={seconds} warning={seconds <= 10} />
     </div>

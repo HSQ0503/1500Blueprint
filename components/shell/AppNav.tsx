@@ -21,18 +21,18 @@ export function AppNav({
 
   return (
     <header className="sticky top-0 z-40 border-b border-navy/12 bg-white/[0.88] backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-[1120px] items-center justify-between gap-4 px-6 py-3">
+      <div className="mx-auto flex w-full max-w-[1120px] items-center justify-between gap-2 px-4 py-3 sm:gap-4 sm:px-6">
         <Link href="/drills" aria-label="1500 SAT Blueprint home" className="inline-flex items-center">
           <Logo />
         </Link>
 
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gold-600/35 bg-[#fff7e6] px-3 py-[7px] text-sm font-bold text-flag">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
+          <span className="hidden items-center gap-1.5 rounded-full border border-gold-600/35 bg-[#fff7e6] px-3 py-[7px] text-sm font-bold text-flag sm:inline-flex">
             <FlameIcon className="h-4 w-4 animate-flicker" />
             {stats.streak}
           </span>
 
-          <span className="inline-flex items-center gap-[7px] rounded-full bg-navy py-[7px] pl-[9px] pr-3 text-[13px] font-bold text-white">
+          <span className="hidden items-center gap-[7px] rounded-full bg-navy py-[7px] pl-[9px] pr-3 text-[13px] font-bold text-white sm:inline-flex">
             <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand font-display text-[11px] leading-none">
               {stats.level}
             </span>

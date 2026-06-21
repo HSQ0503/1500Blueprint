@@ -33,7 +33,7 @@ export function QuestionNavigator({
         className="fixed inset-0 z-30 cursor-default"
       />
       <div className="fixed bottom-20 left-1/2 z-40 w-[min(40rem,94vw)] -translate-x-1/2 font-exam-sans">
-        <div className="rounded-xl border border-exam-border bg-white p-6 shadow-2xl">
+        <div className="rounded-xl border border-exam-border bg-white p-4 shadow-2xl sm:p-6">
           <div className="flex items-start justify-between">
             <h2 className="mx-auto text-center text-[20px] font-bold text-exam-ink">
               {title}
@@ -65,7 +65,7 @@ export function QuestionNavigator({
             </div>
           </div>
 
-          <ul className="grid grid-cols-10 gap-x-3 gap-y-5 pt-3">
+          <ul className="grid grid-cols-6 gap-x-2 gap-y-4 pt-3 sm:grid-cols-8 sm:gap-x-3 sm:gap-y-5 md:grid-cols-10">
             {module.questions.map((q, i) => {
               const isCurrent = i === currentIndex;
               const isAnswered =

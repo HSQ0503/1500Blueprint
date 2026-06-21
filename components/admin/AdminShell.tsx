@@ -22,7 +22,7 @@ export function AdminShell({ active, email, children }: AdminShellProps) {
   return (
     <div className="min-h-screen bg-paper">
       <header className="sticky top-0 z-40 border-b border-navy/12 bg-white/[0.92] backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-[1200px] items-center gap-6 px-6 py-3">
+        <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:gap-6 sm:px-6">
           <div className="flex items-center gap-3">
             <Logo withWordmark={false} className="[&>svg]:h-7 [&>svg]:w-7" />
             <div className="leading-tight">
