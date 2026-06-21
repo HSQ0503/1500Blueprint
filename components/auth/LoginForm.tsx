@@ -6,6 +6,8 @@ type Status = "idle" | "sending" | "sent" | "error";
 
 export function LoginForm({ initialError }: { initialError?: string }) {
   const [email, setEmail] = useState("");
+  const [key, setKey] = useState("");
+  const [adminMode, setAdminMode] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState(errorMessage(initialError));
 
@@ -17,7 +19,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       const res = await fetch("/api/auth/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, key: key || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -82,17 +84,51 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         className="mt-6 w-full rounded-[10px] border-[1.5px] border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
       />
 
+      {adminMode && (
+        <>
+          <label htmlFor="admin-key" className="sr-only">
+            Admin access key
+          </label>
+          <input
+            id="admin-key"
+            type="password"
+            autoComplete="current-password"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder="Admin access key"
+            className="mt-3 w-full rounded-[10px] border-[1.5px] border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
+          />
+        </>
+      )}
+
       <button
         type="submit"
         disabled={status === "sending"}
         className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[11px] bg-brand px-8 text-[15px] font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:opacity-60 disabled:shadow-none"
       >
-        {status === "sending" ? "Sending…" : "Send me a login link"}
+        {status === "sending"
+          ? adminMode
+            ? "Signing in…"
+            : "Sending…"
+          : adminMode
+            ? "Sign in"
+            : "Send me a login link"}
       </button>
 
       {message && (
         <p className={`mt-4 text-sm ${status === "error" ? "text-danger" : "text-navy/60"}`}>{message}</p>
       )}
+
+      <button
+        type="button"
+        onClick={() => {
+          setAdminMode((v) => !v);
+          setMessage("");
+        }}
+        className="mt-5 block w-full text-center text-xs font-medium text-navy/40 transition-colors hover:text-navy/70"
+      >
+        {adminMode ? "Back to member sign-in" : "Admin sign-in"}
+      </button>
     </form>
   );
 }

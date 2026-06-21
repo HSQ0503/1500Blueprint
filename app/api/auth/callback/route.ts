@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/lib/auth/config";
+import { SESSION_COOKIE, appBaseUrl } from "@/lib/auth/config";
 import { consumeLoginToken } from "@/lib/auth/tokens";
 import { signSession, sessionCookieOptions } from "@/lib/auth/session";
 import { recordLogin } from "@/lib/auth/users";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? requestUrl.origin;
+  const base = appBaseUrl(requestUrl.origin);
   const raw = requestUrl.searchParams.get("token");
 
   if (!raw) return NextResponse.redirect(new URL("/login?error=invalid", base));
