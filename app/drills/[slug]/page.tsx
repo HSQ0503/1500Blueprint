@@ -6,6 +6,18 @@ import { WordScanDrill } from "@/components/drills/wordscan/WordScanDrill";
 import { VocabDrill } from "@/components/drills/vocab/VocabDrill";
 import { FlashcardsDrill } from "@/components/drills/flashcards/FlashcardsDrill";
 import { AiMathDrill } from "@/components/drills/aimath/AiMathDrill";
+import { loadDrillQuestions } from "@/lib/drills/loadDrillContent";
+import { selectForStudent } from "@/lib/drills/progress";
+import { getSession } from "@/lib/auth/session";
+import { getNavStats } from "@/lib/gamification/state";
+import {
+  toFlashcards,
+  toGrammarQuestions,
+  toMathQuestions,
+  toReadingItems,
+  toVocabItems,
+} from "@/lib/drills/runtime-map";
+import { DrillEmpty } from "@/components/drills/shared/DrillEmpty";
 
 // Next 16: route params and searchParams are async.
 export default async function DrillPage({
@@ -17,20 +29,51 @@ export default async function DrillPage({
 }) {
   const { slug } = await params;
   const sp = await searchParams;
+  // Used to filter out questions this student has already mastered (and to recycle
+  // oldest-seen-first once they've mastered the whole pool). No session => no
+  // filtering, so the drill still runs.
+  const session = await getSession();
+  const email = session?.email ?? null;
 
   switch (slug) {
-    case "grammar":
-      return <GrammarDrill />;
-    case "targeted-math":
-      return <TargetedMathDrill difficulty={sp.difficulty === "hard" ? "hard" : "medium"} />;
-    case "reading":
-      return <ReadingDrill />;
+    case "grammar": {
+      const raw = await loadDrillQuestions("grammar");
+      const ordered = email ? await selectForStudent("grammar", email, raw) : raw;
+      const questions = toGrammarQuestions(ordered);
+      if (questions.length === 0) return <DrillEmpty title="Grammar Drill" eyebrow="Reading & Writing" />;
+      const nav = email ? await getNavStats(email) : null;
+      return <GrammarDrill questions={questions} streak={nav?.streak ?? 0} />;
+    }
+    case "targeted-math": {
+      const difficulty = sp.difficulty === "hard" ? "hard" : "medium";
+      const loaded = await loadDrillQuestions("targeted-math");
+      // Two buckets: 'hard' shows hard items; 'medium' shows easy + medium, so
+      // no authored difficulty is silently dropped.
+      const bucket = loaded.filter((q) => (q.difficulty === "hard") === (difficulty === "hard"));
+      const ordered = email ? await selectForStudent("targeted-math", email, bucket) : bucket;
+      const questions = toMathQuestions(ordered);
+      return <TargetedMathDrill difficulty={difficulty} questions={questions} />;
+    }
+    case "reading": {
+      const raw = await loadDrillQuestions("reading");
+      const ordered = email ? await selectForStudent("reading", email, raw) : raw;
+      const passages = toReadingItems(ordered);
+      if (passages.length === 0)
+        return <DrillEmpty title="Reading Comprehension Drill" eyebrow="Reading & Writing" />;
+      return <ReadingDrill passages={passages} />;
+    }
     case "word-scan":
       return <WordScanDrill mode={sp.mode === "bad-mold" ? "bad-mold" : "ceased"} />;
-    case "vocab":
-      return <VocabDrill />;
-    case "flashcards":
-      return <FlashcardsDrill />;
+    case "vocab": {
+      const raw = await loadDrillQuestions("vocab");
+      const ordered = email ? await selectForStudent("vocab", email, raw) : raw;
+      const items = toVocabItems(ordered);
+      return <VocabDrill items={items} />;
+    }
+    case "flashcards": {
+      const deck = toFlashcards(await loadDrillQuestions("flashcards"));
+      return <FlashcardsDrill deck={deck} />;
+    }
     case "ai-math":
       return <AiMathDrill />;
     default:

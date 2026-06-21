@@ -1,0 +1,233 @@
+// Server-only: per-student drill question progress. Records which questions a
+// student has attempted/mastered and drives two features:
+//   1. Pool selection — drills stop re-feeding mastered questions (and recycle
+//      oldest-seen-first once every question is mastered, so they never dead-end).
+//   2. The History tab — list every question a student has worked on.
+// Uses the service-role client (bypasses RLS); NEVER import into a Client Component.
+
+import { supabaseAdmin } from "@/utils/supabase/admin";
+import type { Difficulty } from "@/lib/sat/types";
+import type {
+  AnswerType,
+  DrillContent,
+  DrillQuestion,
+  DrillSlug,
+  QuestionStatus,
+  SatSection,
+} from "./types";
+
+// Drills whose questions are tracked. Flashcards is spaced-repetition (re-showing
+// is the point); word-scan / ai-math have no DB-backed questions yet.
+const TRACKED: ReadonlySet<string> = new Set(["grammar", "reading", "targeted-math", "vocab"]);
+export function isTracked(drillSlug: string): boolean {
+  return TRACKED.has(drillSlug);
+}
+
+// A question is "mastered" when the student demonstrates it: a perfect AI grade
+// for the graded drills, a correct answer for the objective ones.
+export function isMastered(
+  drillSlug: string,
+  result: { score?: number | null; correct?: boolean | null },
+): boolean {
+  if (drillSlug === "grammar" || drillSlug === "reading") return (result.score ?? 0) >= 100;
+  if (drillSlug === "targeted-math" || drillSlug === "vocab") return result.correct === true;
+  return false;
+}
+
+export type ProgressRow = {
+  questionId: string;
+  attempts: number;
+  bestScore: number | null;
+  masteredAt: string | null;
+  lastSeenAt: string;
+};
+
+type DbProgressRow = {
+  question_id: string;
+  drill_slug: string;
+  attempts: number;
+  best_score: number | null;
+  mastered_at: string | null;
+  last_seen_at: string;
+};
+
+async function loadProgressMap(email: string, drillSlug: DrillSlug): Promise<Map<string, ProgressRow>> {
+  const { data } = await supabaseAdmin()
+    .from("drill_question_progress")
+    .select("question_id,attempts,best_score,mastered_at,last_seen_at")
+    .eq("email", email)
+    .eq("drill_slug", drillSlug)
+    .returns<DbProgressRow[]>();
+
+  const map = new Map<string, ProgressRow>();
+  for (const r of data ?? []) {
+    map.set(r.question_id, {
+      questionId: r.question_id,
+      attempts: r.attempts,
+      bestScore: r.best_score,
+      masteredAt: r.mastered_at,
+      lastSeenAt: r.last_seen_at,
+    });
+  }
+  return map;
+}
+
+// Filter + order a drill's published questions for one student:
+//   - Active pool = questions not yet mastered, never-seen ones first (then the
+//     incoming created_at order).
+//   - Once everything is mastered, recycle the whole set oldest-seen-first so the
+//     drill keeps working instead of showing an empty screen.
+// `questions` is the already-published list (anon-key loaded); order is preserved
+// for items in the same bucket since Array.prototype.sort is stable.
+export async function selectForStudent(
+  drillSlug: DrillSlug,
+  email: string,
+  questions: DrillQuestion[],
+): Promise<DrillQuestion[]> {
+  if (questions.length === 0) return questions;
+  const progress = await loadProgressMap(email, drillSlug);
+
+  const unmastered = questions.filter((q) => !progress.get(q.id)?.masteredAt);
+  if (unmastered.length > 0) {
+    return unmastered
+      .map((q, i) => ({ q, seen: progress.has(q.id) ? 1 : 0, i }))
+      .sort((a, b) => a.seen - b.seen || a.i - b.i)
+      .map((x) => x.q);
+  }
+
+  return questions
+    .map((q, i) => ({ q, lastSeen: progress.get(q.id)?.lastSeenAt ?? "", i }))
+    .sort((a, b) => a.lastSeen.localeCompare(b.lastSeen) || a.i - b.i)
+    .map((x) => x.q);
+}
+
+// Record one attempt: bump attempts + last_seen_at, keep the best score, and set
+// mastered_at the first time the question is mastered (it never un-masters).
+// Read-then-upsert is fine here — a single student answers sequentially.
+export async function recordProgress(
+  email: string,
+  input: { drillSlug: DrillSlug; questionId: string; score?: number | null; correct?: boolean | null },
+): Promise<void> {
+  if (!isTracked(input.drillSlug)) return;
+  const db = supabaseAdmin();
+  const nowIso = new Date().toISOString();
+  const score = typeof input.score === "number" ? input.score : null;
+  const mastered = isMastered(input.drillSlug, input);
+
+  const { data: existing } = await db
+    .from("drill_question_progress")
+    .select("attempts,best_score,mastered_at")
+    .eq("email", email)
+    .eq("question_id", input.questionId)
+    .maybeSingle<{ attempts: number; best_score: number | null; mastered_at: string | null }>();
+
+  const attempts = (existing?.attempts ?? 0) + 1;
+  const bestScore =
+    score == null ? existing?.best_score ?? null : Math.max(existing?.best_score ?? 0, score);
+  const masteredAt = existing?.mastered_at ?? (mastered ? nowIso : null);
+
+  await db.from("drill_question_progress").upsert(
+    {
+      email,
+      question_id: input.questionId,
+      drill_slug: input.drillSlug,
+      attempts,
+      best_score: bestScore,
+      mastered_at: masteredAt,
+      last_seen_at: nowIso,
+    },
+    { onConflict: "email,question_id" },
+  );
+}
+
+// ---- History --------------------------------------------------------------
+
+export type HistoryEntry = {
+  question: DrillQuestion;
+  drillSlug: DrillSlug;
+  attempts: number;
+  bestScore: number | null;
+  mastered: boolean;
+  lastSeenAt: string;
+};
+
+type DbQuestionRow = {
+  id: string;
+  drill_slug: string;
+  section: string | null;
+  domain: string | null;
+  skill: string | null;
+  difficulty: string;
+  answer_type: string;
+  stem: string | null;
+  passage: string | null;
+  figure_url: string | null;
+  content: Record<string, unknown> | null;
+  explanation: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+function toQuestion(r: DbQuestionRow): DrillQuestion {
+  return {
+    id: r.id,
+    drillSlug: r.drill_slug as DrillSlug,
+    section: (r.section as SatSection | null) ?? null,
+    domain: r.domain,
+    skill: r.skill,
+    difficulty: (r.difficulty ?? "medium") as Difficulty,
+    answerType: r.answer_type as AnswerType,
+    stem: r.stem,
+    passage: r.passage,
+    figureUrl: r.figure_url,
+    content: (r.content ?? {}) as DrillContent,
+    explanation: r.explanation,
+    status: r.status as QuestionStatus,
+    createdBy: null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    walkthrough: [],
+  };
+}
+
+// Every question a student has worked on, most-recent first, optionally scoped to
+// one drill. Joins the progress rows to their current question content; questions
+// deleted since the attempt are skipped.
+export async function loadHistory(email: string, drillSlug?: DrillSlug): Promise<HistoryEntry[]> {
+  const db = supabaseAdmin();
+  let query = db
+    .from("drill_question_progress")
+    .select("question_id,drill_slug,attempts,best_score,mastered_at,last_seen_at")
+    .eq("email", email)
+    .order("last_seen_at", { ascending: false });
+  if (drillSlug) query = query.eq("drill_slug", drillSlug);
+
+  const { data: progress } = await query.returns<DbProgressRow[]>();
+  const rows = progress ?? [];
+  if (rows.length === 0) return [];
+
+  const { data: questions } = await db
+    .from("drill_questions")
+    .select(
+      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_at,updated_at",
+    )
+    .in("id", rows.map((r) => r.question_id))
+    .returns<DbQuestionRow[]>();
+  const byId = new Map((questions ?? []).map((q) => [q.id, q]));
+
+  const out: HistoryEntry[] = [];
+  for (const r of rows) {
+    const q = byId.get(r.question_id);
+    if (!q) continue;
+    out.push({
+      question: toQuestion(q),
+      drillSlug: r.drill_slug as DrillSlug,
+      attempts: r.attempts,
+      bestScore: r.best_score,
+      mastered: Boolean(r.mastered_at),
+      lastSeenAt: r.last_seen_at,
+    });
+  }
+  return out;
+}

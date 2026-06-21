@@ -1,81 +1,165 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { ChoiceId } from "@/lib/sat/types";
-import type { GrammarQuestion } from "@/lib/drills/types";
-import {
-  grammarFailFeedback,
-  grammarMastery,
-  grammarPassFeedback,
-  grammarQuestion,
-} from "@/lib/drills/mock";
+import type { GrammarQuestion, ProcessFeedback } from "@/lib/drills/types";
+import { grammarMastery, grammarQuestion } from "@/lib/drills/mock";
 import { DrillShell } from "../shared/DrillShell";
-import { StatPill, StreakDots } from "../shared/Hud";
 import { ExplainInput } from "../shared/ExplainInput";
 import { GradingLoader } from "../shared/GradingLoader";
 import { ScoreBanner } from "../shared/ScoreBanner";
-import { FeedbackPanel } from "../shared/FeedbackPanel";
+import { CheckCircleIcon } from "../shared/icons";
 import { GrammarQuestionView } from "./GrammarQuestion";
-import { primaryBtn, secondaryBtn, surface } from "../shared/ui";
-import { HelpIcon } from "@/components/test/icons";
+import { FlameIcon, ZapIcon } from "@/components/shell/icons";
 
 type Phase = "question" | "grading" | "feedback";
-type Variant = "pass" | "fail";
 
-export function GrammarDrill() {
+// The grade endpoint returns the AI feedback plus the XP it awarded server-side.
+type GradeResult = ProcessFeedback & { xpAwarded?: number; streak?: number; level?: number; xp?: number };
+
+// Score this or higher twice in a row to master a pattern (100 was too strict).
+const MASTERY_MIN = 75;
+
+type MasteryEvent = "progress" | "mastered" | "reset";
+
+export function GrammarDrill({
+  questions,
+  streak: initialStreak = 0,
+}: {
+  questions?: GrammarQuestion[];
+  streak?: number;
+}) {
+  // Real DB questions when provided, else the single mock so the UI still runs.
+  const items = questions?.length ? questions : [grammarQuestion];
+
   const [phase, setPhase] = useState<Phase>("question");
+  const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<ChoiceId | null>(null);
-  const [explanation, setExplanation] = useState("");
-  const [variant, setVariant] = useState<Variant>("fail");
+  const [feedback, setFeedback] = useState<ProcessFeedback | null>(null);
+  const [xpAwarded, setXpAwarded] = useState(0);
+  const [streak, setStreak] = useState(initialStreak);
+  const [masteryStreak, setMasteryStreak] = useState(0);
+  const [mastered, setMastered] = useState(grammarMastery.mastered);
+  const [masteryEvent, setMasteryEvent] = useState<MasteryEvent | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
 
-  const q = grammarQuestion;
-  const feedback = variant === "pass" ? grammarPassFeedback : grammarFailFeedback;
+  const toastTimer = useRef<number | undefined>(undefined);
+  const streakTarget = grammarMastery.streakTarget;
 
-  function submit(text: string) {
-    setExplanation(text);
+  const q = items[index];
+  const perfect = (feedback?.stepsMissed.length ?? 0) === 0;
+  const xpLabel = `+${xpAwarded} XP`;
+
+  // Grade the typed explanation against the real DB content + Scott's prompt,
+  // then reveal feedback and pop the XP toast.
+  async function submit(text: string) {
+    setError(null);
     setPhase("grading");
-    window.setTimeout(() => setPhase("feedback"), 1600);
+    try {
+      const res = await fetch("/api/drills/grade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillSlug: "grammar",
+          questionId: q.id,
+          studentText: text,
+          selectedChoice: selected ?? undefined,
+        }),
+      });
+      if (!res.ok) throw new Error(`Grading failed (${res.status})`);
+      const data = (await res.json()) as GradeResult;
+      setFeedback(data);
+      setXpAwarded(data.xpAwarded ?? 0);
+      if (typeof data.streak === "number") setStreak(data.streak);
+
+      // Mastery streak: a 75+ extends it; two in a row masters the pattern.
+      const passed = (data.score ?? 0) >= MASTERY_MIN;
+      const nextStreak = passed ? masteryStreak + 1 : 0;
+      if (passed && nextStreak >= streakTarget) {
+        setMasteryStreak(0);
+        setMastered((m) => m + 1);
+        setMasteryEvent("mastered");
+      } else {
+        setMasteryStreak(nextStreak);
+        setMasteryEvent(passed ? "progress" : "reset");
+      }
+
+      setPhase("feedback");
+      setShowToast(true);
+      window.clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setShowToast(false), 3200);
+    } catch {
+      setError("We could not grade that just now. Please try again.");
+      setPhase("question");
+    }
   }
 
   function nextQuestion() {
-    setPhase("question");
+    window.clearTimeout(toastTimer.current);
+    setShowToast(false);
+    setFeedback(null);
+    setError(null);
     setSelected(null);
-    setExplanation("");
+    setMasteryEvent(null);
+    setPhase("question");
+    setIndex((i) => (i + 1) % items.length);
   }
+
+  // Clear the pending toast timer on unmount.
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
   const right = (
     <div className="flex items-center gap-4">
-      <StatPill icon={<HelpIcon />}>
-        {grammarMastery.mastered}/{grammarMastery.total} mastered
-      </StatPill>
-      <span className="hidden text-sm text-navy/50 sm:inline">Cycle {grammarMastery.cycle}</span>
+      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-flag">
+        <FlameIcon className="h-4 w-4" />
+        {streak}
+      </span>
+      <span className="hidden text-sm text-navy/70 sm:inline">
+        {mastered}/{grammarMastery.total} mastered
+      </span>
     </div>
   );
 
   return (
     <DrillShell title="Grammar Drill" eyebrow="Reading & Writing" exitHref="/drills" right={right}>
-      <PreviewSwitch variant={variant} onChange={setVariant} />
-
       {phase === "question" ? (
-        <div className="mx-auto max-w-5xl">
-          <div className={`${surface} p-5 sm:p-7`}>
-            <GrammarQuestionView question={q} selected={selected} onSelect={setSelected} />
-          </div>
+        <div className="mx-auto max-w-[760px]">
+          <GrammarQuestionView question={q} selected={selected} onSelect={setSelected} />
 
-          <div className={`mt-4 flex items-center justify-between ${surface} px-4 py-2.5`}>
-            <span className="inline-flex items-center gap-2.5 text-sm font-medium text-navy/70">
+          <div className="mt-3.5 flex items-center justify-between rounded-xl border border-navy/15 bg-white px-[18px] py-3">
+            <span className="inline-flex items-center gap-[11px] text-sm font-semibold text-navy/70">
               Mastery streak
-              <StreakDots streak={grammarMastery.streak} target={grammarMastery.streakTarget} />
+              <span className="inline-flex gap-1.5">
+                {Array.from({ length: streakTarget }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-[11px] w-[11px] rounded-full ${
+                      i < masteryStreak ? "bg-brand" : "border-[1.5px] border-navy/25"
+                    }`}
+                  />
+                ))}
+              </span>
               <span className="text-navy/40">
-                {grammarMastery.streak}/{grammarMastery.streakTarget}
+                {masteryStreak}/{streakTarget}
               </span>
             </span>
             <span className="hidden text-xs text-navy/45 sm:inline">
-              Score 100 to start your streak
+              Score {MASTERY_MIN} or higher twice in a row to master this pattern
             </span>
           </div>
 
-          <div className="mt-4">
+          {error ? (
+            <div
+              role="alert"
+              className="mt-3.5 rounded-[10px] border border-danger/30 border-l-[3px] border-l-danger bg-danger-bg px-4 py-3 text-[13px] font-semibold text-danger-600"
+            >
+              {error}
+            </div>
+          ) : null}
+
+          <div className="mt-3.5">
             <ExplainInput onSubmit={submit} />
           </div>
         </div>
@@ -83,121 +167,179 @@ export function GrammarDrill() {
 
       {phase === "grading" ? <GradingLoader /> : null}
 
-      {phase === "feedback" ? (
-        <div className="mx-auto max-w-3xl space-y-4">
-          <ScoreBanner score={feedback.score} verdict={feedback.verdict} />
-          {feedback.score < 100 ? (
-            <StreakResetNote target={grammarMastery.streakTarget} />
-          ) : null}
-          <FeedbackPanel
-            feedback={feedback}
-            explanation={explanation}
-            question={<QuestionRecap q={q} />}
-          />
-          <div className="flex flex-wrap gap-3 pt-1">
-            <button type="button" onClick={nextQuestion} className={primaryBtn}>
-              Next question
-            </button>
-            <button type="button" onClick={() => setPhase("question")} className={secondaryBtn}>
-              Back to question
-            </button>
+      {phase === "feedback" && feedback ? (
+        <div className="stagger mx-auto max-w-[680px] space-y-3.5">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-[1fr_200px]">
+            <ScoreBanner score={feedback.score} verdict={feedback.verdict} />
+            <XpCard xp={xpAwarded} score={feedback.score} />
           </div>
+
+          <StreakNote event={masteryEvent} streak={masteryStreak} target={streakTarget} />
+          <AiFeedbackCard text={feedback.feedback} />
+          <StepsBox perfect={perfect} steps={feedback.stepsMissed} />
+          <CorrectAnswerCard q={q} />
+
+          <div className="flex flex-wrap gap-3 pt-1">
+            <button
+              type="button"
+              onClick={nextQuestion}
+              className="rounded-lg bg-brand px-[22px] py-3 text-sm font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px"
+            >
+              Next question →
+            </button>
+            <Link
+              href="/drills"
+              className="rounded-lg border border-navy/20 bg-white px-[22px] py-3 text-sm font-semibold text-navy transition-colors hover:bg-navy/5"
+            >
+              Back to drills
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {showToast ? (
+        <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 animate-toast-in items-center gap-[11px] rounded-full bg-navy px-5 py-3 text-white shadow-[0_10px_30px_rgba(7,25,59,0.35)]">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gold text-navy">
+            <ZapIcon className="h-4 w-4" />
+          </span>
+          <span className="font-display text-base font-extrabold text-gold">{xpLabel}</span>
+          <span className="text-sm text-white/85">
+            {masteryEvent === "mastered"
+              ? "Pattern mastered, nice."
+              : masteryEvent === "progress"
+                ? "Keep the streak going."
+                : "Streak reset, try the next one."}
+          </span>
         </div>
       ) : null}
     </DrillShell>
   );
 }
 
-function QuestionRecap({ q }: { q: GrammarQuestion }) {
+function XpCard({ xp, score }: { xp: number; score: number }) {
   return (
-    <div className="space-y-3">
-      <p className="font-serif leading-relaxed text-exam-ink">{q.passage}</p>
-      <p className="font-serif font-medium text-exam-ink">{q.prompt}</p>
-      <ul className="space-y-1.5">
-        {q.choices.map((c) => {
-          const correct = c.id === q.correct;
-          return (
-            <li
-              key={c.id}
-              className={`flex items-center gap-2 ${
-                correct ? "font-semibold text-success-600" : "text-navy/70"
-              }`}
-            >
-              <span>{c.id}.</span>
-              <span>{c.text}</span>
-              {correct ? <span className="ml-1 text-xs">(correct)</span> : null}
-            </li>
-          );
-        })}
-      </ul>
+    <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-xl bg-[linear-gradient(135deg,#0b2a5b,#1b46a8)] p-[18px] text-center text-white">
+      <div className="pointer-events-none absolute inset-0 w-[50px] animate-sheen bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent)]" />
+      <div className="relative text-[11px] font-semibold uppercase tracking-[0.14em] text-sky">XP Earned</div>
+      <div className="relative font-display text-[34px] font-black leading-[1.1] text-gold">+{xp} XP</div>
+      <div className="relative text-xs text-white/70">graded {score}/100</div>
     </div>
   );
 }
 
-function StreakResetNote({ target }: { target: number }) {
+function StreakNote({
+  event,
+  streak,
+  target,
+}: {
+  event: MasteryEvent | null;
+  streak: number;
+  target: number;
+}) {
+  if (!event) return null;
+  const positive = event !== "reset";
   return (
-    <div className="animate-fade-in overflow-hidden rounded-card border border-danger/30">
-      <div className="border-l-[3px] border-l-danger bg-danger-bg px-4 py-3.5">
-        <div className="flex items-start gap-3">
-          <RefreshIcon className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
-          <div>
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-danger-600">
-              Streak reset
-            </h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-danger">
-              Because you scored below 100, your mastery streak for this pattern reset to 0. You will
-              get a practice question next to help you learn this pattern.
-            </p>
-            <span className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-danger">
-              <StreakDots streak={0} target={target} /> 0/{target} reset
-            </span>
-          </div>
+    <div
+      className={`flex items-center gap-[11px] rounded-[10px] border border-l-[3px] px-4 py-3.5 ${
+        positive
+          ? "border-success/30 border-l-success bg-success-bg text-success-600"
+          : "border-danger/30 border-l-danger bg-danger-bg text-danger-600"
+      }`}
+    >
+      {positive ? (
+        <CheckIcon className="h-[18px] w-[18px] flex-none" />
+      ) : (
+        <RefreshIcon className="h-[18px] w-[18px] flex-none" />
+      )}
+      <span className="text-[13.5px] font-semibold leading-snug">
+        {event === "mastered"
+          ? `Mastery streak ${target}/${target}. Pattern mastered!`
+          : event === "progress"
+            ? `Nice, ${streak}/${target} toward mastering this pattern. One more ${MASTERY_MIN}+ to lock it in.`
+            : `Scored below ${MASTERY_MIN}, so your mastery streak reset to 0/${target}. Keep going.`}
+      </span>
+    </div>
+  );
+}
+
+function AiFeedbackCard({ text }: { text: string }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-navy/15 bg-white">
+      <div className="border-b border-navy/10 px-[18px] py-[11px] text-[11px] font-bold uppercase tracking-[0.14em] text-navy/50">
+        AI Feedback
+      </div>
+      <p className="px-[18px] py-4 text-sm leading-[1.65] text-navy/[0.78]">{text}</p>
+    </div>
+  );
+}
+
+function StepsBox({ perfect, steps }: { perfect: boolean; steps: string[] }) {
+  return (
+    <div className={`overflow-hidden rounded-xl border ${perfect ? "border-success/30" : "border-danger/30"}`}>
+      <div
+        className={`border-l-[3px] px-[18px] py-[15px] ${
+          perfect ? "border-l-success bg-success-bg" : "border-l-danger bg-danger-bg"
+        }`}
+      >
+        <div className={`text-[11px] font-bold uppercase tracking-[0.14em] ${perfect ? "text-success-600" : "text-danger-600"}`}>
+          {perfect ? "Steps you nailed" : "Steps you missed"}
         </div>
+        {perfect ? (
+          <p className="mt-2.5 inline-flex items-center gap-2 text-sm text-success-600">
+            <CheckCircleIcon className="h-4 w-4 shrink-0" />
+            You covered every step of the critical path.
+          </p>
+        ) : (
+          <ol className="mt-2.5 flex flex-col gap-2.5">
+            {steps.map((s, i) => (
+              <li key={i} className="flex items-start gap-[11px] text-sm leading-snug text-danger-600">
+                <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[5px] border border-danger/40 font-display text-[11px] font-bold tabular-nums">
+                  {i + 1}
+                </span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
     </div>
   );
 }
 
-// Temporary preview control (UI-first only): flips the mock feedback between a
-// perfect run and a missed run so both states can be polished. Removed when the
-// real AI grading is wired up.
-function PreviewSwitch({
-  variant,
-  onChange,
-}: {
-  variant: Variant;
-  onChange: (v: Variant) => void;
-}) {
-  const options: Variant[] = ["fail", "pass"];
+function CorrectAnswerCard({ q }: { q: GrammarQuestion }) {
+  const correctText = q.choices.find((c) => c.id === q.correct)?.text ?? "";
   return (
-    <div className="fixed bottom-4 left-4 z-40 flex items-center gap-1 rounded-card border border-navy/20 bg-white/95 px-1.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">
-      <span className="px-2 text-navy/45">Preview</span>
-      {options.map((v) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChange(v)}
-          className={`rounded-chip px-2.5 py-1 capitalize transition-colors ${
-            variant === v ? "bg-navy text-white" : "text-navy/60 hover:bg-navy/5"
-          }`}
-        >
-          {v}
-        </button>
-      ))}
+    <div className="overflow-hidden rounded-xl border border-navy/15 bg-white">
+      <div className="border-b border-navy/10 px-[18px] py-[11px] text-[11px] font-bold uppercase tracking-[0.14em] text-navy/50">
+        Correct answer
+      </div>
+      <div className="px-[18px] py-4">
+        <p className="font-serif text-[14.5px] leading-[1.6] text-exam-ink">
+          Best completion: <strong className="text-success-600">{correctText}</strong>
+        </p>
+        <p className="mt-2.5 text-[13px] leading-relaxed text-navy/60">
+          <strong className="text-navy">
+            {q.correct} · {correctText}.
+          </strong>{" "}
+          {q.explanation}
+        </p>
+      </div>
     </div>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
 function RefreshIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <path
-        d="M20 11a8 8 0 1 0-.6 4M20 5v6h-6"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M20 11a8 8 0 1 0-.6 4M20 5v6h-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

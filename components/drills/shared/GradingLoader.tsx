@@ -1,24 +1,24 @@
-import { surface } from "./ui";
-
 // The "AI is grading..." interstitial shown between submitting an explanation
-// and the feedback screen. Reserves its own card so the layout does not jump.
+// and the feedback screen. Spinner + shimmer skeleton so the layout feels alive.
 export function GradingLoader({
-  title = "AI is grading your explanation...",
-  subtitle = "This may take a few seconds.",
+  title = "Grading your reasoning…",
+  subtitle = "Checking each step of the critical path.",
 }: {
   title?: string;
   subtitle?: string;
 }) {
   return (
-    <div
-      className={`animate-pop-in mx-auto mt-6 flex max-w-md flex-col items-center ${surface} px-8 py-14 text-center`}
-    >
-      <span className="relative flex h-11 w-11">
-        <span className="absolute inset-0 rounded-full border-[3px] border-brand/20" />
-        <span className="absolute inset-0 animate-spin rounded-full border-[3px] border-transparent border-t-brand" />
-      </span>
-      <h2 className="mt-5 font-display text-lg font-bold text-ink">{title}</h2>
-      <p className="mt-1.5 text-sm text-navy/55">{subtitle}</p>
+    <div className="mx-auto max-w-[560px] pt-2">
+      <div className="animate-pop-in rounded-xl border border-navy/15 bg-white p-[30px] text-center">
+        <div className="mx-auto h-[46px] w-[46px] animate-spin-slow rounded-full border-[3px] border-brand/25 border-t-brand" />
+        <h3 className="mb-1 mt-[18px] font-display text-lg font-bold text-navy">{title}</h3>
+        <p className="text-[13.5px] text-navy/55">{subtitle}</p>
+        <div className="mt-[22px] flex flex-col gap-2.5">
+          <div className="shimmer h-3 w-[90%] rounded" />
+          <div className="shimmer h-3 w-full rounded" />
+          <div className="shimmer h-3 w-[70%] rounded" />
+        </div>
+      </div>
     </div>
   );
 }

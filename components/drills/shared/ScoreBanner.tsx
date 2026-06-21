@@ -36,25 +36,21 @@ export function ScoreBanner({ score, verdict }: { score: number; verdict: string
   const tone = toneFor(score);
 
   return (
-    <div className="animate-pop-in overflow-hidden rounded-card border border-navy/15 bg-white">
-      <div className={`border-l-[3px] ${tone.accent} ${tone.tint} px-5 py-4`}>
+    <div className="animate-pop-in flex h-full flex-col overflow-hidden rounded-xl border border-navy/15 bg-white">
+      <div className={`flex-1 border-l-[3px] ${tone.accent} ${tone.tint} px-5 py-[18px]`}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className={`${label} ${tone.text}`}>Score</div>
             <div className="mt-1 flex items-baseline gap-1">
-              <span
-                className={`font-display text-4xl font-extrabold leading-none tabular-nums ${tone.text}`}
-              >
+              <span className={`font-display text-[40px] font-extrabold leading-none tabular-nums ${tone.text}`}>
                 {shown}
               </span>
               <span className="text-lg font-bold text-navy/40">/100</span>
             </div>
           </div>
-          <p className="max-w-[16rem] text-right font-display text-[15px] font-bold leading-snug text-ink">
-            {verdict}
-          </p>
+          <p className="max-w-[16rem] text-right font-display text-[15px] font-bold leading-snug text-ink">{verdict}</p>
         </div>
-        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-[1px] bg-navy/10">
+        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-navy/10">
           <div
             className={`h-full ${tone.fill}`}
             style={{ width: `${Math.max(0, Math.min(100, shown))}%`, transition: "width 80ms linear" }}

@@ -23,6 +23,8 @@
   --color-sky: #7ccbff;
   --color-ice: #ebf7ff;
   --color-ice-200: #d7f8ff;
+  /* Gamified platform-shell background (hub + test picker). */
+  --color-haze: #eef2f7;
   --color-gold: #ffbd20;
   --color-gold-600: #f0a900;
 
@@ -62,6 +64,12 @@
   --animate-rise-in: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fade-in: fade-in 0.3s ease-out both;
   --animate-ring-pulse: ring-pulse 1.6s ease-in-out infinite;
+
+  /* Gamified shell motion: sheen sweep, flame flicker, XP toast, slow spinner. */
+  --animate-sheen: sheen 2.6s ease-in-out infinite;
+  --animate-flicker: flicker 1.8s ease-in-out infinite;
+  --animate-toast-in: toast-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-spin-slow: spin-slow 0.8s linear infinite;
 }
 
 :root {
@@ -148,4 +156,27 @@ body {
   );
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ---------- Gamified platform-shell (hub / test picker / drill runner) ---------- */
+@keyframes sheen {
+  0% { transform: translateX(-130%) skewX(-18deg); }
+  100% { transform: translateX(360%) skewX(-18deg); }
+}
+@keyframes flicker {
+  0%, 100% { transform: scale(1) rotate(-1deg); opacity: 1; }
+  50% { transform: scale(1.08) rotate(1deg); opacity: 0.92; }
+}
+@keyframes toast-in {
+  0% { opacity: 0; transform: translateY(16px) scale(0.9); }
+  60% { opacity: 1; transform: translateY(-3px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+/* The soft "lifted card" shadow used across gamified drill cards. */
+@utility shadow-pop {
+  box-shadow: 0 1px 3px rgba(11, 42, 91, 0.05), 0 16px 32px -22px rgba(11, 42, 91, 0.35);
 }

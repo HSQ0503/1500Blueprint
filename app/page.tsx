@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Students arriving from the 1500 dashboard land straight on the practice-test picker.
+// The drills hub is the student home; every signed-in entry point lands here.
 export default function Home() {
-  redirect("/practice-test");
+  redirect("/drills");
 }

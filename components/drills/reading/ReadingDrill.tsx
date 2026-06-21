@@ -9,18 +9,49 @@ import { GradingLoader } from "../shared/GradingLoader";
 import { ScoreBanner } from "../shared/ScoreBanner";
 import { chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
 import { KeyPointsChecklist, ReadingCard, RecallHeading } from "./ReadingPieces";
-import { readingPassage, readingProgress, recallFail, recallPass } from "./mock";
+import type { KeyPoint, ReadingPassage } from "./mock";
+import { readingPassage, readingProgress } from "./mock";
 
-type Phase = "read" | "recall" | "grading" | "feedback";
-type Variant = "pass" | "fail";
+// One passage the drill can run. Mirrors ReadingContent on a DrillQuestion: the
+// page maps a DB question -> this shape ({ id, body, readSeconds, keyPoints }).
+export type ReadingItem = {
+  id: string;
+  body: string[];
+  readSeconds: number;
+  keyPoints: string[];
+};
 
-export function ReadingDrill() {
+type Phase = "read" | "recall" | "grading" | "feedback" | "error";
+
+// The grade endpoint's success shape for grade-summary drills.
+type GradeResponse = {
+  score: number;
+  verdict: string;
+  captured: { text: string; captured: boolean }[];
+  xpAwarded?: number;
+};
+
+// Fallback when the page passes no DB passages: reuse the single mock passage.
+// `id` is empty so a misconfigured run can't masquerade as a real question.
+const MOCK_ITEM: ReadingItem = {
+  id: "",
+  body: readingPassage.body,
+  readSeconds: readingPassage.readSeconds,
+  keyPoints: [],
+};
+
+export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
+  const items = passages && passages.length > 0 ? passages : [MOCK_ITEM];
+
+  const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("read");
-  const [secondsLeft, setSecondsLeft] = useState(readingPassage.readSeconds);
-  const [summary, setSummary] = useState("");
-  const [variant, setVariant] = useState<Variant>("pass");
+  const item = items[index % items.length];
 
-  const feedback = variant === "pass" ? recallPass : recallFail;
+  const [secondsLeft, setSecondsLeft] = useState(item.readSeconds);
+  const [summary, setSummary] = useState("");
+  const [result, setResult] = useState<GradeResponse | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
   const lowTime = secondsLeft <= 20;
 
   // Countdown only runs during the timed read. Hitting zero advances to recall,
@@ -34,17 +65,56 @@ export function ReadingDrill() {
     return () => window.clearInterval(id);
   }, [phase, secondsLeft]);
 
-  function submitSummary(text: string) {
+  async function gradeSummary(text: string) {
     setSummary(text);
+    if (!item.id) {
+      // Demo/fallback passage with no DB id — grading can't run against it.
+      setErrorMsg("This is a demo passage. Publish a reading question in the admin to enable grading.");
+      setPhase("error");
+      return;
+    }
     setPhase("grading");
-    window.setTimeout(() => setPhase("feedback"), 1600);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/drills/grade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drillSlug: "reading", questionId: item.id, studentText: text }),
+      });
+      if (!res.ok) throw new Error(`Grading failed (${res.status})`);
+      const data = (await res.json()) as GradeResponse;
+      setResult(data);
+      setPhase("feedback");
+    } catch {
+      setPhase("error");
+      setErrorMsg("We couldn't grade your summary. Check your connection and try again.");
+    }
+  }
+
+  // Re-run grading with the summary the student already wrote.
+  function retry() {
+    if (summary.trim()) gradeSummary(summary);
+    else setPhase("recall");
   }
 
   function nextPassage() {
+    setIndex((i) => (i + 1) % items.length);
     setSummary("");
-    setSecondsLeft(readingPassage.readSeconds);
+    setResult(null);
+    setErrorMsg("");
+    setSecondsLeft(items[(index + 1) % items.length].readSeconds);
     setPhase("read");
   }
+
+  const passageForCard: ReadingPassage = {
+    level: readingProgress.level,
+    readSeconds: item.readSeconds,
+    body: item.body,
+  };
+
+  const keyPoints: KeyPoint[] = result
+    ? result.captured.map((c) => ({ text: c.text, captured: c.captured }))
+    : [];
 
   // Timer lives in the header center slot during the read; nowhere else.
   const center =
@@ -69,8 +139,6 @@ export function ReadingDrill() {
       center={center}
       right={right}
     >
-      <PreviewSwitch variant={variant} onChange={setVariant} />
-
       {/* Progression rule bar — Level pill + streak target, shown while practicing. */}
       {phase === "read" || phase === "recall" ? (
         <div className={`mx-auto mb-5 max-w-3xl ${surface} flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5`}>
@@ -89,7 +157,7 @@ export function ReadingDrill() {
             kicker="Phase 1 — Timed Reading"
             text="Read closely. The passage disappears when the timer ends or you finish."
           />
-          <ReadingCard passage={readingPassage} onDone={() => setPhase("recall")} />
+          <ReadingCard passage={passageForCard} onDone={() => setPhase("recall")} />
         </>
       ) : null}
 
@@ -104,7 +172,7 @@ export function ReadingDrill() {
             label="Your Summary"
             placeholder="Write everything you remember about the passage. Capture all the key points, findings, and arguments..."
             submitLabel="Submit"
-            onSubmit={submitSummary}
+            onSubmit={gradeSummary}
           />
         </div>
       ) : null}
@@ -116,10 +184,32 @@ export function ReadingDrill() {
         />
       ) : null}
 
-      {phase === "feedback" ? (
+      {phase === "error" ? (
+        <div className="mx-auto max-w-3xl">
+          <div className={`${surface} border-danger/30 bg-danger-bg/40 px-5 py-5 text-center`}>
+            <p className="font-display text-base font-bold text-danger-600">Grading failed</p>
+            <p className="mt-1 text-sm text-navy/60">{errorMsg}</p>
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              <button type="button" onClick={retry} className={primaryBtn}>
+                Try again
+              </button>
+              <Link href="/drills" className={secondaryBtn}>
+                Back to drills
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {phase === "feedback" && result ? (
         <div className="mx-auto max-w-3xl space-y-4">
-          <ScoreBanner score={feedback.score} verdict={feedback.verdict} />
-          <KeyPointsChecklist points={feedback.keyPoints} />
+          <ScoreBanner score={result.score} verdict={result.verdict} />
+          {result.xpAwarded ? (
+            <div className="flex items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#0b2a5b,#1b46a8)] px-4 py-3 text-center font-display text-lg font-extrabold text-gold">
+              +{result.xpAwarded} XP earned
+            </div>
+          ) : null}
+          {keyPoints.length > 0 ? <KeyPointsChecklist points={keyPoints} /> : null}
           <SummaryRecap summary={summary} />
           <div className="flex flex-wrap gap-3 pt-1">
             <button type="button" onClick={nextPassage} className={primaryBtn}>
@@ -159,39 +249,6 @@ function SummaryRecap({ summary }: { summary: string }) {
       ) : (
         <p className="px-4 py-3.5 text-sm text-navy/40">No summary submitted.</p>
       )}
-    </div>
-  );
-}
-
-// Temporary preview control (UI-first only): flips the mock grading between a
-// strong recall and a weak one so both feedback states can be polished. Removed
-// when the real AI grading is wired up.
-function PreviewSwitch({
-  variant,
-  onChange,
-}: {
-  variant: Variant;
-  onChange: (v: Variant) => void;
-}) {
-  const options: { id: Variant; label: string }[] = [
-    { id: "fail", label: "Low" },
-    { id: "pass", label: "High" },
-  ];
-  return (
-    <div className="fixed bottom-4 left-4 z-40 flex items-center gap-1 rounded-card border border-navy/20 bg-white/95 px-1.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">
-      <span className="px-2 text-navy/45">Preview</span>
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          onClick={() => onChange(o.id)}
-          className={`rounded-chip px-2.5 py-1 transition-colors ${
-            variant === o.id ? "bg-navy text-white" : "text-navy/60 hover:bg-navy/5"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
     </div>
   );
 }

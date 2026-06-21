@@ -11,13 +11,16 @@ import { DECK, DUE_COUNT, type Flashcard } from "./mock";
 type Phase = "overview" | "review" | "summary";
 type Rating = "again" | "good" | "easy";
 
-export function FlashcardsDrill() {
+export function FlashcardsDrill({ deck }: { deck?: Flashcard[] }) {
+  const cards = deck?.length ? deck : DECK;
+  const dueCount = deck?.length ? deck.length : DUE_COUNT;
+
   const [phase, setPhase] = useState<Phase>("overview");
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [reviewed, setReviewed] = useState(0);
 
-  const card = DECK[index];
+  const card = cards[index];
 
   function start() {
     setPhase("review");
@@ -30,7 +33,7 @@ export function FlashcardsDrill() {
     void rating;
     const next = index + 1;
     setReviewed((n) => n + 1);
-    if (next >= DECK.length) {
+    if (next >= cards.length) {
       setPhase("summary");
     } else {
       setIndex(next);
@@ -41,7 +44,7 @@ export function FlashcardsDrill() {
   if (phase === "overview") {
     return (
       <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref="/drills">
-        <Overview onStart={start} />
+        <Overview onStart={start} deckSize={cards.length} dueCount={dueCount} />
       </DrillShell>
     );
   }
@@ -72,28 +75,36 @@ export function FlashcardsDrill() {
 
   const center = (
     <span className="text-sm font-semibold tabular-nums text-navy">
-      {index + 1} <span className="font-normal text-navy/45">/ {DECK.length}</span>
+      {index + 1} <span className="font-normal text-navy/45">/ {cards.length}</span>
     </span>
   );
 
   return (
     <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref="/drills" center={center}>
       <div className="mx-auto max-w-2xl">
-        <ProgressBar value={index} max={DECK.length} />
+        <ProgressBar value={index} max={cards.length} />
         <ReviewCard card={card} revealed={revealed} onReveal={() => setRevealed(true)} onRate={rate} />
       </div>
     </DrillShell>
   );
 }
 
-function Overview({ onStart }: { onStart: () => void }) {
+function Overview({
+  onStart,
+  deckSize,
+  dueCount,
+}: {
+  onStart: () => void;
+  deckSize: number;
+  dueCount: number;
+}) {
   return (
     <div className="mx-auto max-w-2xl">
       <div className={`${surface} p-6`}>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Stat value={String(DECK.length)} unit="cards in deck" />
+          <Stat value={String(deckSize)} unit="cards in deck" />
           <span className="hidden h-8 w-px bg-navy/12 sm:block" />
-          <Stat value={String(DUE_COUNT)} unit="due for review" />
+          <Stat value={String(dueCount)} unit="due for review" />
         </div>
       </div>
 

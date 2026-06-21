@@ -40,14 +40,19 @@ export function LoginForm({ initialError }: { initialError?: string }) {
   if (status === "sent") {
     return (
       <div className="text-center">
-        <h1 className="font-display text-2xl font-bold text-white">Check your inbox</h1>
-        <p className="mt-3 text-sm leading-6 text-white/70">{message}</p>
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-bg text-success-600">
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
+            <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <h1 className="mt-4 font-display text-2xl font-extrabold tracking-[-0.01em] text-navy">Check your inbox</h1>
+        <p className="mt-2 text-sm leading-6 text-navy/60">{message}</p>
         <button
           onClick={() => {
             setStatus("idle");
             setMessage("");
           }}
-          className="mt-6 text-sm font-medium text-sky hover:text-white"
+          className="mt-6 text-sm font-semibold text-brand-600 transition-colors hover:text-brand"
         >
           Use a different email
         </button>
@@ -57,8 +62,8 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
   return (
     <form onSubmit={onSubmit} className="w-full">
-      <h1 className="font-display text-2xl font-bold text-white">Sign in</h1>
-      <p className="mt-2 text-sm leading-6 text-white/70">
+      <h1 className="font-display text-2xl font-extrabold tracking-[-0.01em] text-navy">Sign in</h1>
+      <p className="mt-2 text-sm leading-6 text-navy/60">
         Enter the email on your 1500 membership and we&rsquo;ll send you a login link.
       </p>
 
@@ -74,21 +79,19 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
-        className="mt-6 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 outline-none focus:border-brand"
+        className="mt-6 w-full rounded-[10px] border-[1.5px] border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
       />
 
       <button
         type="submit"
         disabled={status === "sending"}
-        className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-full bg-gold px-8 text-base font-semibold text-navy shadow-lg shadow-gold/20 transition-colors hover:bg-gold-600 disabled:opacity-60"
+        className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[11px] bg-brand px-8 text-[15px] font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:opacity-60 disabled:shadow-none"
       >
         {status === "sending" ? "Sending…" : "Send me a login link"}
       </button>
 
       {message && (
-        <p className={`mt-4 text-sm ${status === "error" ? "text-gold" : "text-white/70"}`}>
-          {message}
-        </p>
+        <p className={`mt-4 text-sm ${status === "error" ? "text-danger" : "text-navy/60"}`}>{message}</p>
       )}
     </form>
   );

@@ -12,24 +12,37 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  if (await getSession()) redirect("/practice-test");
+  if (await getSession()) redirect("/drills");
   const { error } = await searchParams;
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-navy px-6 text-white">
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-1/4 top-0 h-[140%] w-1/3 -rotate-12 bg-gradient-to-b from-brand/40 via-brand/10 to-transparent blur-2xl" />
-        <div className="absolute inset-0 bg-gradient-to-b from-navy/0 via-navy/40 to-ink" />
+    <div
+      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 py-12"
+      style={{
+        background:
+          "linear-gradient(110deg,transparent 36%,rgba(124,203,255,0.22) 44%,transparent 52%)," +
+          "linear-gradient(125deg,transparent 56%,rgba(124,203,255,0.16) 63%,transparent 70%)," +
+          "linear-gradient(130deg,#07193b 0%,#0b2a5b 42%,#1b46a8 74%,#0b2a5b 100%)",
+      }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-10 -top-12 font-display font-black leading-none tracking-[-0.04em] text-white/[0.04]"
+        style={{ fontSize: "260px" }}
+      >
+        1500
       </div>
 
-      <div className="relative z-10 w-full max-w-sm">
-        <div className="mb-8 flex justify-center">
-          <Logo className="text-white [&_.text-navy]:text-white" />
+      <div className="relative z-10 w-full max-w-[400px]">
+        <div className="mb-7 flex justify-center">
+          <Logo className="[&_.text-navy]:text-white" />
         </div>
-        <div className="rounded-2xl bg-white/5 p-8 ring-1 ring-inset ring-white/10 backdrop-blur-sm">
+
+        <div className="rounded-2xl border border-white/10 bg-white p-7 shadow-[0_20px_60px_rgba(7,25,59,0.35)] sm:p-8">
           <LoginForm initialError={error} />
         </div>
-        <p className="mt-6 text-center text-xs text-white/50">
+
+        <p className="mt-5 text-center text-xs text-white/55">
           Access is for active 1500 SAT Blueprint members.
         </p>
       </div>

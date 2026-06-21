@@ -1,39 +1,65 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { jwtVerify, type JWTPayload } from "jose";
 import { SESSION_COOKIE } from "@/lib/auth/config";
+import { isAdminEmail } from "@/lib/auth/admin";
 
 // Paths reachable without a session.
 const PUBLIC_PATHS = ["/login"];
+// The admin CMS is gated to allowlisted admin emails (ADMIN_EMAILS).
+const ADMIN_PREFIX = "/admin";
 
 function isPublic(pathname: string): boolean {
   if (pathname.startsWith("/api/auth")) return true;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-async function hasValidSession(request: NextRequest): Promise<boolean> {
+function isAdminPath(pathname: string): boolean {
+  return pathname === ADMIN_PREFIX || pathname.startsWith(`${ADMIN_PREFIX}/`);
+}
+
+// Verify the session JWT and return its payload, or null if absent/invalid.
+async function sessionPayload(request: NextRequest): Promise<JWTPayload | null> {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const secret = process.env.AUTH_SECRET;
-  if (!token || !secret) return false;
+  if (!token || !secret) return null;
   try {
-    await jwtVerify(token, new TextEncoder().encode(secret), { algorithms: ["HS256"] });
-    return true;
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+      algorithms: ["HS256"],
+    });
+    return payload;
   } catch {
-    return false;
+    return null;
   }
 }
 
 // Next 16: this file replaces the old `middleware.ts` (Middleware → Proxy).
 // Gates the whole drill site behind a session; only /login and the auth
-// endpoints are reachable logged out.
+// endpoints are reachable logged out. The /admin area additionally requires an
+// admin email (defense-in-depth; pages/routes re-check via getAdminSession).
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (isPublic(pathname)) return NextResponse.next();
-  if (await hasValidSession(request)) return NextResponse.next();
 
-  const loginUrl = request.nextUrl.clone();
-  loginUrl.pathname = "/login";
-  loginUrl.search = "";
-  return NextResponse.redirect(loginUrl);
+  const payload = await sessionPayload(request);
+  if (!payload) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (isAdminPath(pathname)) {
+    const email = typeof payload.sub === "string" ? payload.sub : null;
+    if (!isAdminEmail(email)) {
+      // Signed-in non-admin (a student): bounce to the drills hub.
+      const url = request.nextUrl.clone();
+      url.pathname = "/drills";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

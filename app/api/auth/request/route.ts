@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   if (isDevBypass(email)) {
     await recordLogin(email, "dev");
     const token = await signSession({ email, plan: "dev" });
-    const response = NextResponse.json({ ok: true, redirect: "/practice-test" });
+    const response = NextResponse.json({ ok: true, redirect: "/drills" });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
     return response;
   }

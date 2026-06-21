@@ -2,45 +2,48 @@
 
 import { useState } from "react";
 import { MicIcon, SendIcon } from "./icons";
-import { primaryBtn, surface } from "./ui";
+import { useDictation } from "./useDictation";
 
-// The free-text answer box shared by Grammar ("Explain Your Process") and
-// Reading ("Your Summary"). The Speak button is a visual recording state for
-// now; the logic phase wires it to dictation (Web Speech API).
+// The free-text answer box shared by Grammar ("Explain your process") and
+// Reading ("Your Summary"). The Speak button dictates into the textarea via the
+// Web Speech API and falls back to typing where the browser has no support.
 export function ExplainInput({
-  label = "Explain Your Process",
-  placeholder = "Describe your process when solving this question from start to end. Be as detailed as possible.",
-  submitLabel = "Submit",
+  label = "Explain your process",
+  helper = "Walk through your reasoning in detail: what you checked first, the rule you applied, and why the other options are wrong.",
+  placeholder = "Describe your process from start to end. Name the rule, then show how it rules each choice in or out.",
+  submitLabel = "Submit for grading",
   onSubmit,
 }: {
   label?: string;
+  helper?: string;
   placeholder?: string;
   submitLabel?: string;
   onSubmit: (text: string) => void;
 }) {
   const [text, setText] = useState("");
-  const [recording, setRecording] = useState(false);
+  const { supported, recording, toggle } = useDictation(text, setText);
   const canSubmit = text.trim().length > 0;
 
   return (
-    <div className={`${surface} p-4 sm:p-5`}>
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="font-display text-base font-bold text-ink">{label}</h3>
+    <div className="rounded-xl border border-navy/15 bg-white p-[18px]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[13px] font-bold text-navy">{label}</div>
+          <p className="mt-1 text-[12.5px] leading-snug text-navy/55">{helper}</p>
+        </div>
         <button
           type="button"
-          onClick={() => setRecording((r) => !r)}
+          onClick={toggle}
+          disabled={!supported}
           aria-pressed={recording}
-          className={`inline-flex items-center gap-1.5 rounded-card border px-3 py-1.5 text-sm font-semibold transition-colors ${
-            recording
-              ? "border-danger/30 bg-danger/10 text-danger"
-              : "border-navy/20 text-navy/70 hover:bg-navy/5"
+          title={supported ? "Dictate your answer" : "Voice input isn't supported in this browser"}
+          className={`inline-flex flex-none items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            recording ? "border-danger/30 bg-danger/10 text-danger" : "border-navy/15 text-navy/60 hover:bg-navy/5"
           }`}
         >
           <span className="relative flex h-4 w-4 items-center justify-center">
             <MicIcon className="h-4 w-4" />
-            {recording ? (
-              <span className="animate-ring-pulse absolute -right-1 -top-1 h-2 w-2 rounded-full bg-danger" />
-            ) : null}
+            {recording ? <span className="animate-ring-pulse absolute -right-1 -top-1 h-2 w-2 rounded-full bg-danger" /> : null}
           </span>
           {recording ? "Listening" : "Speak"}
         </button>
@@ -53,15 +56,22 @@ export function ExplainInput({
         id="explain-text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        rows={5}
         placeholder={placeholder}
-        className="mt-3 w-full resize-none rounded-card border border-navy/20 bg-paper/40 p-3.5 text-[15px] leading-relaxed text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20"
+        className="mt-3 min-h-[120px] w-full resize-y rounded-[10px] border-[1.5px] border-navy/[0.18] p-[13px_15px] text-sm leading-relaxed text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
       />
 
-      <div className="mt-3 flex justify-end">
-        <button type="button" disabled={!canSubmit} onClick={() => onSubmit(text)} className={primaryBtn}>
-          <SendIcon className="h-4 w-4" />
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <span className="text-xs text-navy/45">
+          {recording ? "Listening… tap Listening to stop." : "Press submit to get instant AI feedback"}
+        </span>
+        <button
+          type="button"
+          disabled={!canSubmit}
+          onClick={() => onSubmit(text)}
+          className="inline-flex items-center gap-2 rounded-lg bg-navy px-5 py-[11px] text-sm font-bold text-white transition-colors hover:bg-navy-700 disabled:cursor-not-allowed disabled:bg-navy/25"
+        >
           {submitLabel}
+          <SendIcon className="h-[15px] w-[15px]" />
         </button>
       </div>
     </div>

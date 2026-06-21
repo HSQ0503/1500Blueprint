@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
   await recordLogin(result.email, result.plan);
   const token = await signSession({ email: result.email, plan: result.plan });
-  const response = NextResponse.redirect(new URL("/practice-test", base));
+  const response = NextResponse.redirect(new URL("/drills", base));
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return response;
 }

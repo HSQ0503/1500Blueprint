@@ -6,6 +6,7 @@ import { DrillShell } from "../shared/DrillShell";
 import { DigitalTimer, LivesHud } from "../shared/Hud";
 import { chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
 import { CalculatorIcon, CloseIcon, ReferenceIcon } from "@/components/test/icons";
+import { MathText } from "@/components/test/MathText";
 import { TrophyIcon, XCircleIcon } from "../shared/icons";
 import { DirectionsPanel } from "./DirectionsPanel";
 import {
@@ -16,13 +17,23 @@ import {
   isCorrect,
   questionsFor,
   type MathDifficulty,
+  type MathQuestion,
 } from "./mockData";
 
 type Phase = "playing" | "win" | "fail";
 type Overlay = null | "calculator" | "reference";
 
-export function TargetedMathDrill({ difficulty = "medium" }: { difficulty?: MathDifficulty }) {
-  const questions = questionsFor(difficulty);
+export function TargetedMathDrill({
+  difficulty = "medium",
+  questions: provided,
+}: {
+  difficulty?: MathDifficulty;
+  questions?: MathQuestion[];
+}) {
+  // Real DB questions when supplied; otherwise the offline mock for this difficulty.
+  const questions = provided?.length ? provided : questionsFor(difficulty);
+  // Only DB-backed questions have real ids to record; the offline mock isn't tracked.
+  const tracked = Boolean(provided?.length);
 
   const [phase, setPhase] = useState<Phase>("playing");
   const [qIndex, setQIndex] = useState(0);
@@ -35,6 +46,18 @@ export function TargetedMathDrill({ difficulty = "medium" }: { difficulty?: Math
 
   const question = questions[qIndex % questions.length];
 
+  // Fire-and-forget: record this question as seen (and mastered when correct) so
+  // it stops being re-fed and appears in History. Mock questions aren't tracked.
+  function markSeen(questionId: string, wasCorrect: boolean) {
+    if (!tracked) return;
+    fetch("/api/drills/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ drillSlug: "targeted-math", questionId, correct: wasCorrect }),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
   function advance() {
     setQIndex((i) => i + 1);
     setSeconds(SECONDS_PER_QUESTION);
@@ -42,6 +65,7 @@ export function TargetedMathDrill({ difficulty = "medium" }: { difficulty?: Math
   }
 
   function loseLife() {
+    markSeen(question.id, false);
     const nextLives = lives - 1;
     setAttempts((a) => a + 1);
     setLives(nextLives);
@@ -52,7 +76,9 @@ export function TargetedMathDrill({ difficulty = "medium" }: { difficulty?: Math
   function submit() {
     if (!answer.trim()) return;
     setAttempts((a) => a + 1);
-    if (isCorrect(answer, question.accepted)) {
+    const ok = isCorrect(answer, question.accepted);
+    markSeen(question.id, ok);
+    if (ok) {
       const next = correct + 1;
       setCorrect(next);
       if (next >= WIN_TARGET) setPhase("win");
@@ -132,7 +158,7 @@ export function TargetedMathDrill({ difficulty = "medium" }: { difficulty?: Math
             </div>
 
             <p className="mt-4 font-serif text-[17px] leading-relaxed text-exam-ink">
-              {question.prompt}
+              <MathText>{question.prompt}</MathText>
             </p>
 
             <label htmlFor="math-answer" className={`${label} mt-6 block text-navy/50`}>

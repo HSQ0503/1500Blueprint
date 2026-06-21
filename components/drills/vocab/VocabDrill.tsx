@@ -10,13 +10,13 @@ import {
   ClockIcon,
   CloseIcon,
 } from "@/components/test/icons";
-import { vocabItems } from "./mock";
+import { vocabItems, type VocabItem } from "./mock";
 import { VocabQuestion } from "./VocabQuestion";
 import { VocabSummary } from "./VocabSummary";
 
 const ADVANCE_DELAY = 850;
 
-export function VocabDrill() {
+export function VocabDrill({ items }: { items?: VocabItem[] }) {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [mastered, setMastered] = useState(0);
@@ -27,8 +27,23 @@ export function VocabDrill() {
   const [done, setDone] = useState(false);
 
   const advanceRef = useRef<number | null>(null);
-  const total = vocabItems.length;
-  const item = vocabItems[index];
+  const data = items?.length ? items : vocabItems;
+  // Only DB-backed items have real ids to record; the offline mock isn't tracked.
+  const tracked = Boolean(items?.length);
+  const total = data.length;
+  const item = data[index];
+
+  // Fire-and-forget: record this word as seen (mastered when correct) so it stops
+  // being re-fed and appears in History.
+  function markSeen(questionId: string, wasCorrect: boolean) {
+    if (!tracked) return;
+    fetch("/api/drills/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ drillSlug: "vocab", questionId, correct: wasCorrect }),
+      keepalive: true,
+    }).catch(() => {});
+  }
 
   // Count-up timer: runs while the session is active.
   useEffect(() => {
@@ -48,6 +63,7 @@ export function VocabDrill() {
     setSelected(word);
 
     const correct = word === item.correct;
+    markSeen(item.id, correct);
     if (correct) {
       setMastered((m) => m + 1);
       setStreak((prev) => {
