@@ -1,3 +1,0 @@
-[     492ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477
-[     558ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477
-[   19359ms] [LOG] %c%s font-size:2em; color: #fad54b; Warning: iFrames aren't a supported or secure way to use Desmos inside of another application. Please reach out to partnerships@desmos.com for more details on how to safely embed Desmos within your website. @ https://www.desmos.com/assets/build/shared_calculator_desktop-62b0974bab3c9c49f8320332fcc67c72e413a1fb.js:5412
