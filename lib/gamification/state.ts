@@ -407,3 +407,127 @@ export async function getNavStats(email: string): Promise<NavStats> {
     plan: user?.plan ?? "1500 Club",
   };
 }
+
+/* ------------------------------ Admin roster ---------------------------- */
+
+export type StudentDrillStat = { attempted: number; mastered: number };
+
+export type StudentRow = {
+  email: string;
+  name: string;
+  initials: string;
+  plan: string;
+  level: number;
+  xp: number;
+  streak: number;
+  lastActive: string | null;
+  joined: string | null;
+  onboarded: boolean;
+  perDrill: Record<string, StudentDrillStat>;
+  totalAttempted: number;
+  totalMastered: number;
+  bestTest: number | null;
+  testsDone: number;
+};
+
+// Drills with per-question progress tracking (drill_question_progress).
+const ROSTER_DRILLS = ["grammar", "reading", "targeted-math", "vocab"] as const;
+
+// Full student roster for the admin panel: account + XP/streak + per-drill
+// mastery + best practice-test score. Aggregates in JS from three bulk reads —
+// fine at the current scale; swap to a Postgres view/RPC if the roster grows
+// large. Sorted by XP, highest first.
+export async function listStudents(): Promise<StudentRow[]> {
+  const db = supabaseAdmin();
+  const [usersRes, progRes, testRes] = await Promise.all([
+    db
+      .from("users")
+      .select("email,name,plan,xp,streak_current,last_login_at,last_active_date,created_at,onboarded_at")
+      .returns<
+        {
+          email: string;
+          name: string | null;
+          plan: string | null;
+          xp: number | null;
+          streak_current: number | null;
+          last_login_at: string | null;
+          last_active_date: string | null;
+          created_at: string | null;
+          onboarded_at: string | null;
+        }[]
+      >(),
+    db
+      .from("drill_question_progress")
+      .select("email,drill_slug,mastered_at")
+      .returns<{ email: string; drill_slug: string; mastered_at: string | null }[]>(),
+    db
+      .from("test_attempts")
+      .select("email,total_score")
+      .returns<{ email: string; total_score: number | null }[]>(),
+  ]);
+
+  // Per-drill mastery per student.
+  const progByEmail = new Map<string, Record<string, StudentDrillStat>>();
+  for (const r of progRes.data ?? []) {
+    if (!(ROSTER_DRILLS as readonly string[]).includes(r.drill_slug)) continue;
+    let perDrill = progByEmail.get(r.email);
+    if (!perDrill) {
+      perDrill = {};
+      progByEmail.set(r.email, perDrill);
+    }
+    let stat = perDrill[r.drill_slug];
+    if (!stat) {
+      stat = { attempted: 0, mastered: 0 };
+      perDrill[r.drill_slug] = stat;
+    }
+    stat.attempted += 1;
+    if (r.mastered_at) stat.mastered += 1;
+  }
+
+  // Best + count of practice tests per student.
+  const testByEmail = new Map<string, { best: number | null; count: number }>();
+  for (const r of testRes.data ?? []) {
+    const entry = testByEmail.get(r.email) ?? { best: null, count: 0 };
+    entry.count += 1;
+    if (typeof r.total_score === "number") {
+      entry.best = entry.best == null ? r.total_score : Math.max(entry.best, r.total_score);
+    }
+    testByEmail.set(r.email, entry);
+  }
+
+  const rows: StudentRow[] = (usersRes.data ?? []).map((u) => {
+    const xp = u.xp ?? 0;
+    const id = identity(u.email, u.name);
+    const perDrill = progByEmail.get(u.email) ?? {};
+    let totalAttempted = 0;
+    let totalMastered = 0;
+    for (const slug of ROSTER_DRILLS) {
+      const s = perDrill[slug];
+      if (s) {
+        totalAttempted += s.attempted;
+        totalMastered += s.mastered;
+      }
+    }
+    const test = testByEmail.get(u.email);
+    return {
+      email: u.email,
+      name: id.name,
+      initials: id.initials,
+      plan: u.plan ?? "1500 Club",
+      level: levelProgress(xp).level,
+      xp,
+      streak: u.streak_current ?? 0,
+      lastActive: u.last_login_at ?? u.last_active_date ?? null,
+      joined: u.created_at ?? null,
+      onboarded: Boolean(u.onboarded_at),
+      perDrill,
+      totalAttempted,
+      totalMastered,
+      bestTest: test?.best ?? null,
+      testsDone: test?.count ?? 0,
+    };
+  });
+
+  rows.sort((a, b) => b.xp - a.xp);
+  return rows;
+}
