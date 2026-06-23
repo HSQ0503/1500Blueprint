@@ -11,6 +11,7 @@ import type {
   StreakDay,
 } from "@/lib/gamification";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { isAdminEmail } from "@/lib/auth/admin";
 import type { AnswerMap, ModuleVariant, SectionId } from "@/lib/sat/types";
 import {
   ACHIEVEMENTS,
@@ -525,6 +526,7 @@ export async function getNavStats(email: string): Promise<NavStats> {
     name: id.name,
     initials: id.initials,
     plan: user?.plan ?? "1500 Club",
+    isAdmin: isAdminEmail(email),
   };
 }
 

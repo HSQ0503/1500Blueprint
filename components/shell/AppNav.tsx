@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import type { NavStats } from "@/lib/gamification";
 import { AccountMenu } from "./AccountMenu";
-import { FlameIcon } from "./icons";
+import { FlameIcon, ShieldIcon } from "./icons";
 
 // Sticky translucent chrome shared by the hub, test picker, and history. The
 // primary button points to whichever practice surface you're not currently on;
@@ -39,6 +39,16 @@ export function AppNav({
             {stats.xp.toLocaleString()} XP
           </span>
 
+          {stats.isAdmin && (
+            <Link
+              href="/admin"
+              aria-label="Admin panel"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gold-600/40 bg-[#fff7e6] px-3 py-2 text-sm font-semibold text-flag transition-colors hover:bg-[#ffefc7]"
+            >
+              <ShieldIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Admin</span>
+            </Link>
+          )}
           <Link
             href="/history"
             aria-current={activePage === "history" ? "page" : undefined}
