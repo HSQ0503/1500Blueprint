@@ -35,6 +35,9 @@ export type TestState = {
   timeLeft: number;
   timerHidden: boolean;
   perQuestionTime: Record<string, number>;
+  // Set only when the student reaches results by finishing the test (not via the
+  // dev jump), so the runner saves + awards exactly one genuine attempt.
+  completedViaFlow?: boolean;
 };
 
 export type TestAction =
@@ -53,6 +56,7 @@ export type TestAction =
   | { type: "END_BREAK" }
   | { type: "TOGGLE_TIMER" }
   | { type: "RESTART" }
+  | { type: "RESUME"; state: TestState }
   | { type: "DEV_JUMP"; sectionIndex: number; moduleOrder: 1 | 2; variant?: ModuleVariant }
   | { type: "DEV_RESULTS" };
 
@@ -118,7 +122,7 @@ export function makeReducer(test: PracticeTest) {
     if (state.sectionIndex < test.sections.length - 1) {
       return { ...state, phase: "break", timeLeft: test.breakMinutes * 60 };
     }
-    return { ...state, phase: "results" };
+    return { ...state, phase: "results", completedViaFlow: true };
   }
 
   return function reducer(state: TestState, action: TestAction): TestState {
@@ -177,6 +181,8 @@ export function makeReducer(test: PracticeTest) {
         return { ...state, timerHidden: !state.timerHidden };
       case "RESTART":
         return initialState();
+      case "RESUME":
+        return action.state;
       case "DEV_JUMP": {
         const section = test.sections[action.sectionIndex];
         const routed =

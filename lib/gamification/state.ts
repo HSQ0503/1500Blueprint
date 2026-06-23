@@ -11,6 +11,7 @@ import type {
   StreakDay,
 } from "@/lib/gamification";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import type { AnswerMap, ModuleVariant, SectionId } from "@/lib/sat/types";
 import {
   ACHIEVEMENTS,
   ACHIEVEMENT_CATEGORIES,
@@ -316,26 +317,61 @@ export type TestResultInput = {
   totalScore: number;
   rwScore?: number;
   mathScore?: number;
+  // Stored so the full report can be recomputed deterministically on review.
+  answers?: AnswerMap;
+  routed?: Partial<Record<SectionId, ModuleVariant>>;
+  perQuestionTime?: Record<string, number>;
+  // Idempotency: a unique per-finish token. A retried or duplicate submission with
+  // the same token hits the unique index and is recorded once (no double award).
+  clientToken?: string;
 };
 
-// Record a completed practice test, award XP, advance the streak, unlock achievements.
-export async function awardTest(email: string, input: TestResultInput): Promise<AwardOutcome> {
+export type TestAwardOutcome = AwardOutcome & { attemptId: string };
+
+// Record a completed practice test, award XP, advance the streak, unlock
+// achievements. Idempotent on clientToken: a duplicate submission returns the
+// existing attempt without awarding again. Returns the attempt id for linking.
+export async function awardTest(email: string, input: TestResultInput): Promise<TestAwardOutcome> {
   const db = supabaseAdmin();
   const amount = TEST_COMPLETE_XP + testBonusXp(input.totalScore);
 
-  await db.from("test_attempts").insert({
-    email,
-    test_slug: input.testSlug,
-    total_score: input.totalScore,
-    rw_score: input.rwScore ?? null,
-    math_score: input.mathScore ?? null,
-    xp_awarded: amount,
-  });
+  const { data: inserted, error } = await db
+    .from("test_attempts")
+    .insert({
+      email,
+      test_slug: input.testSlug,
+      total_score: input.totalScore,
+      rw_score: input.rwScore ?? null,
+      math_score: input.mathScore ?? null,
+      xp_awarded: amount,
+      answers: input.answers ?? null,
+      routed: input.routed ?? null,
+      per_question_time: input.perQuestionTime ?? null,
+      completed_at: new Date().toISOString(),
+      client_token: input.clientToken ?? null,
+    })
+    .select("id")
+    .maybeSingle<{ id: string }>();
+
+  // A unique-token collision means this attempt was already recorded: return it
+  // without awarding XP again. Anything else unexpected re-throws.
+  if (error || !inserted) {
+    if (input.clientToken) {
+      const { data: existing } = await db
+        .from("test_attempts")
+        .select("id")
+        .eq("client_token", input.clientToken)
+        .maybeSingle<{ id: string }>();
+      if (existing) return { xpAwarded: 0, newAchievements: [], attemptId: existing.id };
+    }
+    if (error) throw error;
+  }
+
   await db.from("xp_events").insert({ email, amount, reason: "test", ref: input.testSlug });
   await db.rpc("add_xp", { p_email: email, p_amount: amount });
   await creditStreak(email);
   const newAchievements = await unlockNewAchievements(email);
-  return { xpAwarded: amount, newAchievements };
+  return { xpAwarded: amount, newAchievements, attemptId: inserted?.id ?? "" };
 }
 
 /* ------------------------------ Onboarding ------------------------------ */
@@ -363,6 +399,7 @@ export type TestProgress = {
   testsDone: number;
   improvement: number | null; // best minus first
   bestBySlug: Record<string, number>;
+  countBySlug: Record<string, number>;
 };
 
 export async function getTestProgress(email: string): Promise<TestProgress> {
@@ -378,7 +415,9 @@ export async function getTestProgress(email: string): Promise<TestProgress> {
   const bestScore = scores.length ? Math.max(...scores) : null;
   const firstScore = scores.length ? scores[0] : null;
   const bestBySlug: Record<string, number> = {};
+  const countBySlug: Record<string, number> = {};
   for (const r of rows) {
+    countBySlug[r.test_slug] = (countBySlug[r.test_slug] ?? 0) + 1;
     if (typeof r.total_score === "number") {
       bestBySlug[r.test_slug] = Math.max(bestBySlug[r.test_slug] ?? 0, r.total_score);
     }
@@ -388,6 +427,87 @@ export async function getTestProgress(email: string): Promise<TestProgress> {
     testsDone: rows.length,
     improvement: bestScore != null && firstScore != null ? bestScore - firstScore : null,
     bestBySlug,
+    countBySlug,
+  };
+}
+
+export type TestAttemptSummary = {
+  id: string;
+  totalScore: number | null;
+  rwScore: number | null;
+  mathScore: number | null;
+  createdAt: string;
+};
+
+// All of a student's attempts at one test, newest first, for the attempts list.
+export async function listTestAttempts(
+  email: string,
+  slug: string,
+): Promise<TestAttemptSummary[]> {
+  const { data } = await supabaseAdmin()
+    .from("test_attempts")
+    .select("id,total_score,rw_score,math_score,created_at")
+    .eq("email", email)
+    .eq("test_slug", slug)
+    .order("created_at", { ascending: false })
+    .returns<
+      { id: string; total_score: number | null; rw_score: number | null; math_score: number | null; created_at: string }[]
+    >();
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    totalScore: r.total_score,
+    rwScore: r.rw_score,
+    mathScore: r.math_score,
+    createdAt: r.created_at,
+  }));
+}
+
+export type StoredTestAttempt = {
+  id: string;
+  testSlug: string;
+  totalScore: number | null;
+  rwScore: number | null;
+  mathScore: number | null;
+  answers: AnswerMap;
+  routed: Partial<Record<SectionId, ModuleVariant>>;
+  perQuestionTime: Record<string, number>;
+  createdAt: string;
+};
+
+// One stored attempt, scoped to the owner (so a student can only open their own).
+// Returns the data needed to recompute the full report via scoreTest.
+export async function getTestAttempt(
+  email: string,
+  attemptId: string,
+): Promise<StoredTestAttempt | null> {
+  const { data } = await supabaseAdmin()
+    .from("test_attempts")
+    .select("id,test_slug,total_score,rw_score,math_score,answers,routed,per_question_time,created_at,completed_at")
+    .eq("email", email)
+    .eq("id", attemptId)
+    .maybeSingle<{
+      id: string;
+      test_slug: string;
+      total_score: number | null;
+      rw_score: number | null;
+      math_score: number | null;
+      answers: AnswerMap | null;
+      routed: Partial<Record<SectionId, ModuleVariant>> | null;
+      per_question_time: Record<string, number> | null;
+      created_at: string;
+      completed_at: string | null;
+    }>();
+  if (!data) return null;
+  return {
+    id: data.id,
+    testSlug: data.test_slug,
+    totalScore: data.total_score,
+    rwScore: data.rw_score,
+    mathScore: data.math_score,
+    answers: data.answers ?? {},
+    routed: data.routed ?? {},
+    perQuestionTime: data.per_question_time ?? {},
+    createdAt: data.completed_at ?? data.created_at,
   };
 }
 

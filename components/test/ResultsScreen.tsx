@@ -23,7 +23,13 @@ type Props = {
   routed: Partial<Record<SectionId, ModuleVariant>>;
   answers: AnswerMap;
   perQuestionTime: Record<string, number>;
-  onRestart: () => void;
+  // Taking mode (rendered by the client runner): retake the test.
+  onRestart?: () => void;
+  // Review mode (rendered server-side from a saved attempt): read-only links.
+  backHref?: string;
+  attemptDate?: string;
+  // Taking mode, once the attempt has saved: link to its permanent report.
+  savedHref?: string;
 };
 
 type ReviewItem = { sectionName: string; q: Question };
@@ -52,6 +58,9 @@ export function ResultsScreen({
   answers,
   perQuestionTime,
   onRestart,
+  backHref,
+  attemptDate,
+  savedHref,
 }: Props) {
   const [showOnlyWrong, setShowOnlyWrong] = useState(false);
 
@@ -83,6 +92,7 @@ export function ResultsScreen({
             <p className="text-sm uppercase tracking-wide text-sky">Total score</p>
             <p className="font-display text-6xl font-extrabold">{result.total}</p>
             <p className="text-sm text-white/60">out of 1600</p>
+            {attemptDate && <p className="mt-1 text-xs text-white/50">Taken {attemptDate}</p>}
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {result.sections.map((s) => {
@@ -240,13 +250,31 @@ export function ResultsScreen({
         </ol>
 
         <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <button
-            type="button"
-            onClick={onRestart}
-            className="rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
-          >
-            Retake practice test
-          </button>
+          {onRestart && (
+            <button
+              type="button"
+              onClick={onRestart}
+              className="rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+            >
+              Retake practice test
+            </button>
+          )}
+          {savedHref && (
+            <Link
+              href={savedHref}
+              className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"
+            >
+              View saved report
+            </Link>
+          )}
+          {backHref && (
+            <Link
+              href={backHref}
+              className="rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+            >
+              Back to your attempts
+            </Link>
+          )}
           <Link
             href="/"
             className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"

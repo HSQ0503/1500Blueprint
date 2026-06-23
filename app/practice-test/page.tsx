@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth/session";
 import { getNavStats, getTestProgress } from "@/lib/gamification/state";
 
 export const metadata = {
-  title: "Practice Tests — 1500 SAT Blueprint",
+  title: "Practice Tests · 1500 SAT Blueprint",
   description:
     "Choose a full-length, Bluebook-style digital SAT practice test from the 1500 SAT Blueprint.",
 };
@@ -100,8 +100,9 @@ export default async function PracticeTestsPage() {
             {tests.map((t) => {
               const { num, label } = parseTest(t.slug, t.title);
               const best = progress.bestBySlug[t.slug] ?? null;
+              const count = progress.countBySlug[t.slug] ?? 0;
               return (
-                <li key={t.slug}>
+                <li key={t.slug} className="flex flex-col">
                   <Link
                     href={`/practice-test/${t.slug}`}
                     className="group flex items-center gap-[15px] rounded-xl border border-navy/15 border-t-2 border-t-brand bg-white p-[18px] transition-colors hover:border-navy/30"
@@ -131,6 +132,15 @@ export default async function PracticeTestsPage() {
                       <ChevronRightIcon className="h-3.5 w-3.5" />
                     </span>
                   </Link>
+                  {count > 0 && (
+                    <Link
+                      href={`/practice-test/${t.slug}/attempts`}
+                      className="mt-1.5 inline-flex items-center gap-1 self-start px-1 text-xs font-semibold text-navy/55 hover:text-navy"
+                    >
+                      View {count} past {count === 1 ? "attempt" : "attempts"}
+                      <ChevronRightIcon className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
                 </li>
               );
             })}
