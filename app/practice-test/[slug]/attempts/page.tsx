@@ -5,6 +5,7 @@ import { ChevronRightIcon } from "@/components/shell/icons";
 import { getSession } from "@/lib/auth/session";
 import { getNavStats, listTestAttempts } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
+import { listModuleAttempts } from "@/lib/sat/moduleAttempts";
 
 export const metadata = {
   title: "Your attempts · 1500 SAT Blueprint",
@@ -30,9 +31,10 @@ export default async function AttemptsPage({
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [nav, attempts, tests] = await Promise.all([
+  const [nav, attempts, moduleAttempts, tests] = await Promise.all([
     getNavStats(session.email),
     listTestAttempts(session.email, slug),
+    listModuleAttempts(session.email, slug),
     listTests(),
   ]);
 
@@ -93,6 +95,40 @@ export default async function AttemptsPage({
               </li>
             ))}
           </ul>
+        )}
+
+        {moduleAttempts.length > 0 && (
+          <section className="mt-9">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-display text-lg font-extrabold text-navy">Single-module practice</h2>
+              <Link
+                href={`/practice-test/${slug}/modules`}
+                className="text-xs font-semibold text-navy/55 hover:text-navy"
+              >
+                Practice a module
+              </Link>
+            </div>
+            <p className="mt-1 text-sm text-navy/55">Modules you have drilled on their own, newest first.</p>
+            <ul className="mt-4 space-y-2.5">
+              {moduleAttempts.map((a) => (
+                <li key={a.id}>
+                  <Link
+                    href={`/practice-test/${slug}/module/${a.moduleKey}/results/${a.id}`}
+                    className="group flex items-center gap-4 rounded-xl border border-navy/15 bg-white p-4 transition-colors hover:border-navy/30"
+                  >
+                    <div className="flex h-11 w-11 flex-none items-center justify-center rounded-[10px] bg-ice font-display text-sm font-extrabold tabular-nums text-brand-600">
+                      {a.correct}/{a.total}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-display text-base font-bold text-ink">{a.label}</div>
+                      <div className="mt-0.5 text-[12px] text-navy/55">{formatTaken(a.createdAt)}</div>
+                    </div>
+                    <ChevronRightIcon className="h-4 w-4 flex-none text-navy/40 group-hover:text-navy" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
       </main>
       <footer className="mx-auto w-full max-w-[860px] px-6 pb-10 text-center text-xs text-navy/40">

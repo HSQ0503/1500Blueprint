@@ -132,15 +132,24 @@ export default async function PracticeTestsPage() {
                       <ChevronRightIcon className="h-3.5 w-3.5" />
                     </span>
                   </Link>
-                  {count > 0 && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
                     <Link
-                      href={`/practice-test/${t.slug}/attempts`}
-                      className="mt-1.5 inline-flex items-center gap-1 self-start px-1 text-xs font-semibold text-navy/55 hover:text-navy"
+                      href={`/practice-test/${t.slug}/modules`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-navy/55 hover:text-navy"
                     >
-                      View {count} past {count === 1 ? "attempt" : "attempts"}
+                      Practice a single module
                       <ChevronRightIcon className="h-3.5 w-3.5" />
                     </Link>
-                  )}
+                    {count > 0 && (
+                      <Link
+                        href={`/practice-test/${t.slug}/attempts`}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-navy/55 hover:text-navy"
+                      >
+                        View {count} past {count === 1 ? "attempt" : "attempts"}
+                        <ChevronRightIcon className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                  </div>
                 </li>
               );
             })}
