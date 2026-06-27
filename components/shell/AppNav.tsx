@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import type { NavStats } from "@/lib/gamification";
+import { LayersIcon } from "@/components/flashcards/icons";
 import { AccountMenu } from "./AccountMenu";
-import { FlameIcon } from "./icons";
+import { FlameIcon, ShieldIcon } from "./icons";
 
-// Sticky translucent chrome shared by the hub, test picker, and history. The
-// primary button points to whichever practice surface you're not currently on;
-// History is a persistent tab.
+// Sticky translucent chrome shared by the hub, test picker, history, and
+// flashcards. The primary button points to whichever practice surface you're
+// not currently on; Flashcards and History are persistent tabs.
 export function AppNav({
   activePage,
   stats,
 }: {
-  activePage: "drills" | "tests" | "history";
+  activePage: "drills" | "tests" | "history" | "flashcards";
   stats: NavStats;
 }) {
   const cta =
@@ -38,6 +39,30 @@ export function AppNav({
             </span>
             {stats.xp.toLocaleString()} XP
           </span>
+
+          {stats.isAdmin && (
+            <Link
+              href="/admin"
+              aria-label="Admin panel"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gold-600/40 bg-[#fff7e6] px-3 py-2 text-sm font-semibold text-flag transition-colors hover:bg-[#ffefc7]"
+            >
+              <ShieldIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Admin</span>
+            </Link>
+          )}
+          <Link
+            href="/flashcards"
+            aria-current={activePage === "flashcards" ? "page" : undefined}
+            aria-label="Flashcards"
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+              activePage === "flashcards"
+                ? "border-navy bg-navy text-white"
+                : "border-navy/20 bg-white text-navy hover:bg-navy/5"
+            }`}
+          >
+            <LayersIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Flashcards</span>
+          </Link>
 
           <Link
             href="/history"

@@ -7,6 +7,7 @@ import { Achievements } from "@/components/hub/Achievements";
 import { DrillCatalog } from "@/components/hub/DrillCatalog";
 import { OnboardingTour } from "@/components/hub/OnboardingTour";
 import { getSession } from "@/lib/auth/session";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { getHubState, needsOnboarding } from "@/lib/gamification/state";
 
 export const metadata = {
@@ -30,6 +31,7 @@ export default async function DrillsPage() {
     name: hub.player.name,
     initials: hub.player.initials,
     plan: hub.player.plan,
+    isAdmin: isAdminEmail(session.email),
   };
 
   return (

@@ -11,11 +11,15 @@ function resend(): Resend {
   return client;
 }
 
-const FROM = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+// Sender on the verified Resend domain (1500satblueprint.com). Defaults here so
+// prod never falls back to the shared resend.dev sender. EMAIL_FROM may be a bare
+// address (gets the default display name) or a full "Name <addr>" value.
+const FROM = process.env.EMAIL_FROM ?? "login@1500satblueprint.com";
+const FROM_HEADER = FROM.includes("<") ? FROM : `1500 SAT Blueprint <${FROM}>`;
 
 export async function sendMagicLink(email: string, url: string): Promise<void> {
   const { error } = await resend().emails.send({
-    from: `1500 SAT Blueprint <${FROM}>`,
+    from: FROM_HEADER,
     to: email,
     subject: "Your 1500 SAT Blueprint login link",
     text:

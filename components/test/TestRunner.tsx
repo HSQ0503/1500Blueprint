@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PracticeTest } from "@/lib/sat/types";
-import { activeModule, activeSection, initialState, makeReducer } from "@/lib/sat/testState";
+import {
+  activeModule,
+  activeSection,
+  formatTime,
+  initialState,
+  makeReducer,
+  type TestState,
+} from "@/lib/sat/testState";
 import { scoreTest } from "@/lib/sat/scoring";
+import type { SavedSession } from "@/lib/sat/testSession";
 import type { Highlight } from "./HighlightablePassage";
-import { IntroScreen } from "./IntroScreen";
+import { IntroScreen, type ResumeInfo } from "./IntroScreen";
 import { TestHeader } from "./TestHeader";
 import { PracticeBanner } from "./PracticeBanner";
 import { QuestionScreen } from "./QuestionScreen";
@@ -24,7 +32,30 @@ import { DevJumpMenu } from "./DevJumpMenu";
 
 const STUDENT_NAME = "Shouqi Han";
 
-export function TestRunner({ test, devMode = false }: { test: PracticeTest; devMode?: boolean }) {
+// Clamp a saved (possibly stale) state against the live test so a shrunk or
+// re-imported form can never strand the runner on an out-of-bounds question.
+// Returns null when the saved section/module no longer exists at all.
+function sanitizeResumeState(s: TestState, test: PracticeTest): TestState | null {
+  if (s.sectionIndex < 0 || s.sectionIndex >= test.sections.length) return null;
+  const section = test.sections[s.sectionIndex];
+  const variant = s.routed[section.id] ?? "easy";
+  const mod = s.moduleOrder === 1 ? section.module1 : section.module2[variant];
+  if (!mod || mod.questions.length === 0) return null;
+  const qIndex = Math.min(Math.max(0, s.qIndex), mod.questions.length - 1);
+  return { ...s, qIndex };
+}
+
+export function TestRunner({
+  test,
+  slug,
+  devMode = false,
+  resumeState = null,
+}: {
+  test: PracticeTest;
+  slug: string;
+  devMode?: boolean;
+  resumeState?: SavedSession | null;
+}) {
   const router = useRouter();
   const reducer = useMemo(() => makeReducer(test), [test]);
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
@@ -35,6 +66,51 @@ export function TestRunner({ test, devMode = false }: { test: PracticeTest; devM
   const [navOpen, setNavOpen] = useState(false);
   const [highlightOn, setHighlightOn] = useState(true);
   const [highlights, setHighlights] = useState<Record<string, Highlight[]>>({});
+  const [resumeDismissed, setResumeDismissed] = useState(false);
+  const [savedAttemptId, setSavedAttemptId] = useState<string | null>(null);
+
+  // Latest values for the unload/interval savers, which must not re-bind per change.
+  const stateRef = useRef(state);
+  const highlightsRef = useRef(highlights);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+  useEffect(() => {
+    highlightsRef.current = highlights;
+  }, [highlights]);
+
+  // The saved state, clamped to the live test once. Drives both the resume offer
+  // and the actual RESUME dispatch so neither can use an out-of-range index.
+  const safeResume = useMemo(
+    () => (resumeState ? sanitizeResumeState(resumeState.state, test) : null),
+    [resumeState, test],
+  );
+
+  // Persist the in-progress session. Skipped at intro, the transient module-over
+  // screen, results (a finished test clears its session server-side instead), and
+  // the final-module review (the screen right before results) so no save can be in
+  // flight racing the completion clear. keepalive lets a save survive a navigation.
+  const persist = useCallback(() => {
+    const s = stateRef.current;
+    const isFinalReview =
+      s.phase === "review" &&
+      s.sectionIndex === test.sections.length - 1 &&
+      s.moduleOrder === 2;
+    if (
+      s.phase === "intro" ||
+      s.phase === "moduleOver" ||
+      s.phase === "results" ||
+      isFinalReview
+    ) {
+      return;
+    }
+    void fetch("/api/tests/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ testSlug: slug, state: s, highlights: highlightsRef.current }),
+      keepalive: true,
+    }).catch(() => {});
+  }, [slug, test]);
 
   useEffect(() => {
     if (state.phase !== "module" && state.phase !== "break") return;
@@ -47,6 +123,120 @@ export function TestRunner({ test, devMode = false }: { test: PracticeTest; devM
     const id = setTimeout(() => dispatch({ type: "ADVANCE" }), 2200);
     return () => clearTimeout(id);
   }, [state.phase]);
+
+  // Debounced save on meaningful changes. timeLeft is intentionally excluded so a
+  // tick never saves; highlights and the restored toggles are included so they too
+  // survive a resume.
+  useEffect(() => {
+    if (state.phase === "intro" || state.phase === "moduleOver" || state.phase === "results") return;
+    const id = setTimeout(persist, 1200);
+    return () => clearTimeout(id);
+  }, [
+    persist,
+    state.phase,
+    state.sectionIndex,
+    state.moduleOrder,
+    state.qIndex,
+    state.answers,
+    state.marked,
+    state.eliminated,
+    state.routed,
+    state.eliminatorOn,
+    state.timerHidden,
+    highlights,
+  ]);
+
+  // Periodic save while a module/break timer runs, so the remaining time is
+  // captured even if the student leaves without interacting.
+  useEffect(() => {
+    if (state.phase !== "module" && state.phase !== "break") return;
+    const id = setInterval(persist, 15000);
+    return () => clearInterval(id);
+  }, [persist, state.phase]);
+
+  // Save on tab hide / unload (covers refresh and closing the tab).
+  useEffect(() => {
+    const onHide = () => persist();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") persist();
+    };
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [persist]);
+
+  // A stale session that no longer maps onto the live test is cleared so it stops
+  // being offered (and stops loading on the server).
+  useEffect(() => {
+    if (resumeState && !safeResume) {
+      void fetch(`/api/tests/session?testSlug=${encodeURIComponent(slug)}`, {
+        method: "DELETE",
+        keepalive: true,
+      }).catch(() => {});
+    }
+  }, [resumeState, safeResume, slug]);
+
+  // On a genuine finish (not the dev jump), save the completed attempt and award
+  // XP exactly once, then surface a link to its permanent report. The token makes
+  // a retried keepalive POST idempotent server-side.
+  const completedRef = useRef(false);
+  useEffect(() => {
+    if (state.phase !== "results" || !state.completedViaFlow) {
+      completedRef.current = false;
+      return;
+    }
+    if (completedRef.current) return;
+    completedRef.current = true;
+    const s = stateRef.current;
+    const clientToken = crypto.randomUUID();
+    void fetch("/api/tests/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        testSlug: slug,
+        answers: s.answers,
+        routed: s.routed,
+        perQuestionTime: s.perQuestionTime,
+        clientToken,
+      }),
+      keepalive: true,
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { attemptId?: string } | null) => {
+        if (d?.attemptId) setSavedAttemptId(d.attemptId);
+      })
+      .catch(() => {});
+  }, [state.phase, state.completedViaFlow, slug]);
+
+  // Describe a resumable saved session for the intro's "Resume" card.
+  const resumeInfo = useMemo<ResumeInfo | null>(() => {
+    if (!safeResume) return null;
+    const ph = safeResume.phase;
+    if (ph !== "module" && ph !== "review" && ph !== "break") return null;
+    const sec = test.sections[safeResume.sectionIndex];
+    const sectionLabel =
+      ph === "break"
+        ? "your break before the next section"
+        : `Section ${safeResume.sectionIndex + 1}, Module ${safeResume.moduleOrder} (${sec?.name ?? ""})`;
+    const timeLabel = ph === "module" || ph === "break" ? formatTime(safeResume.timeLeft) : null;
+    return { sectionLabel, timeLabel };
+  }, [safeResume, test]);
+
+  function handleResume() {
+    if (!safeResume) return;
+    setHighlights(resumeState?.highlights ?? {});
+    dispatch({ type: "RESUME", state: safeResume });
+  }
+  function handleStartOver() {
+    setResumeDismissed(true);
+    void fetch(`/api/tests/session?testSlug=${encodeURIComponent(slug)}`, {
+      method: "DELETE",
+      keepalive: true,
+    }).catch(() => {});
+  }
 
   function addHighlight(qid: string, h: Highlight) {
     setHighlights((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), h] }));
@@ -75,10 +265,17 @@ export function TestRunner({ test, devMode = false }: { test: PracticeTest; devM
   ) : null;
 
   if (state.phase === "intro") {
+    const showResume = resumeInfo && !resumeDismissed ? resumeInfo : null;
     return (
       <>
         {devMenu}
-        <IntroScreen test={test} onStart={() => dispatch({ type: "START" })} />
+        <IntroScreen
+          test={test}
+          onStart={() => dispatch({ type: "START" })}
+          resume={showResume}
+          onResume={handleResume}
+          onStartOver={handleStartOver}
+        />
       </>
     );
   }
@@ -105,13 +302,18 @@ export function TestRunner({ test, devMode = false }: { test: PracticeTest; devM
           routed={state.routed}
           answers={state.answers}
           perQuestionTime={state.perQuestionTime}
-          onRestart={() => dispatch({ type: "RESTART" })}
+          onRestart={() => {
+            setSavedAttemptId(null);
+            dispatch({ type: "RESTART" });
+          }}
+          savedHref={savedAttemptId ? `/practice-test/${slug}/results/${savedAttemptId}` : undefined}
         />
       </>
     );
   }
 
   const section = activeSection(test, state);
+  if (!section) return null; // defensive: never reached after sanitizeResumeState
   const mod = activeModule(test, state);
   const question = mod.questions[state.qIndex];
   const moduleLabel = `Section ${state.sectionIndex + 1}, Module ${state.moduleOrder}: ${section.name}`;
@@ -131,7 +333,10 @@ export function TestRunner({ test, devMode = false }: { test: PracticeTest; devM
       onOpenReference={() => setOverlay("reference")}
       onOpenCalculator={() => setCalcOpen(true)}
       onOpenLineReader={() => setLineReaderOn(true)}
-      onExit={() => router.push("/practice-test")}
+      onExit={() => {
+        persist();
+        router.push("/practice-test");
+      }}
     />
   );
 

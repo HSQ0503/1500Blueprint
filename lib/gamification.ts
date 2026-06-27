@@ -25,6 +25,7 @@ export type NavStats = {
   name: string;
   initials: string;
   plan: string;
+  isAdmin: boolean;
 };
 
 // One day in the weekly streak row. `done` = the daily goal was met that day
