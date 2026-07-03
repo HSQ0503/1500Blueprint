@@ -1,0 +1,74 @@
+// Data model for the community board. Modeled on Whop's community feed (the
+// closest shipped analog to Scott's Skool). These are the runtime shapes the
+// components render; lib/community/queries.ts maps the Supabase rows into them.
+
+export type CommunityCategory =
+  | "general"
+  | "scores"
+  | "questions"
+  | "wins"
+  | "plans";
+
+// An uploaded screenshot attached to a post.
+export type PostShot = { kind: "image"; url: string; alt: string };
+
+export type Author = {
+  name: string;
+  handle: string;
+  initials: string;
+  level: number;
+};
+
+export type PostComment = {
+  id: string;
+  author: Author;
+  authorHandle: string; // for the "can I delete this" check on the client
+  timeAgo: string;
+  body: string;
+};
+
+export type CommunityPost = {
+  id: string;
+  author: Author;
+  authorHandle: string; // duplicated flat for the client delete check
+  category: CommunityCategory;
+  timeAgo: string;
+  body: string;
+  shot?: PostShot;
+  likes: number;
+  liked: boolean;
+  commentCount: number;
+  views: number;
+  comments?: PostComment[];
+};
+
+// Right-rail "top members this week".
+export type TopMember = {
+  name: string;
+  initials: string;
+  level: number;
+  postCount: number;
+};
+
+// Category display config: filter label + the breadcrumb dot color. One place to
+// tune the palette; every card + chip reads from here.
+export const CATEGORY: Record<CommunityCategory, { label: string; dot: string }> = {
+  general: { label: "General", dot: "bg-navy/40" },
+  scores: { label: "Score Drops", dot: "bg-gold-600" },
+  questions: { label: "Questions", dot: "bg-brand" },
+  wins: { label: "Wins", dot: "bg-success" },
+  plans: { label: "Study Plans", dot: "bg-[#7c6cff]" },
+};
+
+// Filter order for the chip row (All + each category).
+export const CATEGORY_ORDER: CommunityCategory[] = [
+  "general",
+  "scores",
+  "questions",
+  "wins",
+  "plans",
+];
+
+export function isCategory(value: unknown): value is CommunityCategory {
+  return typeof value === "string" && (CATEGORY_ORDER as string[]).includes(value);
+}

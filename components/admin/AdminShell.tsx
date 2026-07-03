@@ -8,7 +8,7 @@ import { Logo } from "@/components/Logo";
 // no client interactivity is required.
 
 export type AdminShellProps = {
-  active: "bank" | "students" | "settings" | "sets";
+  active: "bank" | "students" | "settings" | "sets" | "community";
   email: string;
   children: ReactNode;
 };
@@ -16,6 +16,7 @@ export type AdminShellProps = {
 const tabs = [
   { key: "bank", label: "Question Bank", href: "/admin" },
   { key: "sets", label: "Flashcard Sets", href: "/admin/sets" },
+  { key: "community", label: "Community", href: "/admin/community" },
   { key: "students", label: "Students", href: "/admin/students" },
   { key: "settings", label: "Drill Settings", href: "/admin/drills" },
 ] as const;

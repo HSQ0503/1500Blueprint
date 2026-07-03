@@ -1,0 +1,16 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { getSession } from "@/lib/auth/session";
+import { toggleLike } from "@/lib/community/queries";
+
+// Toggle the current member's like on a post; returns { liked, likes }.
+// Next 16: ctx.params is a Promise.
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function POST(_req: NextRequest, ctx: Ctx) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const { id } = await ctx.params;
+  const result = await toggleLike(id, session.email);
+  return NextResponse.json(result);
+}

@@ -42,6 +42,39 @@ export function ChevronRightIcon({ className }: IconProps) {
   );
 }
 
+// Four-square grid — the drills catalog.
+export function DrillsIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="4" y="4" width="7" height="7" rx="1.6" />
+      <rect x="13" y="4" width="7" height="7" rx="1.6" />
+      <rect x="4" y="13" width="7" height="7" rx="1.6" />
+      <rect x="13" y="13" width="7" height="7" rx="1.6" />
+    </svg>
+  );
+}
+
+// Document with lines — full-length practice tests.
+export function TestsIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M13.5 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8.5l-5-5Z" strokeLinejoin="round" />
+      <path d="M13.5 3.5V8a1 1 0 0 0 1 1h4" strokeLinejoin="round" />
+      <path d="M8.5 13h7M8.5 16h5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Clock face — attempt history.
+export function HistoryIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.2" />
+      <path d="M12 7.5V12l3 1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Shield with a check — admin panel entry (currentColor stroke).
 export function ShieldIcon({ className }: IconProps) {
   return (

@@ -2,86 +2,84 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import type { NavStats } from "@/lib/gamification";
 import { LayersIcon } from "@/components/flashcards/icons";
+import { CommunityIcon } from "@/components/community/icons";
 import { AccountMenu } from "./AccountMenu";
-import { FlameIcon, ShieldIcon } from "./icons";
+import { DrillsIcon, FlameIcon, HistoryIcon, ShieldIcon, TestsIcon } from "./icons";
 
-// Sticky translucent chrome shared by the hub, test picker, history, and
-// flashcards. The primary button points to whichever practice surface you're
-// not currently on; Flashcards and History are persistent tabs.
-export function AppNav({
-  activePage,
-  stats,
-}: {
-  activePage: "drills" | "tests" | "history" | "flashcards";
-  stats: NavStats;
-}) {
-  const cta =
-    activePage === "drills"
-      ? { label: "Practice Tests", href: "/practice-test" }
-      : { label: "Practice Drills", href: "/drills" };
+type TabKey = "drills" | "tests" | "history" | "flashcards" | "community";
 
+// Sticky translucent chrome shared across the signed-in surfaces. The primary
+// destinations are one lightweight, borderless tab group (active = soft pill);
+// streak/XP and the admin entry are compact so they never crowd the tabs.
+const TABS: { key: TabKey; label: string; href: string; Icon: (p: { className?: string }) => React.ReactElement }[] = [
+  { key: "drills", label: "Drills", href: "/drills", Icon: DrillsIcon },
+  { key: "tests", label: "Tests", href: "/practice-test", Icon: TestsIcon },
+  { key: "community", label: "Community", href: "/community", Icon: CommunityIcon },
+  { key: "flashcards", label: "Flashcards", href: "/flashcards", Icon: LayersIcon },
+  { key: "history", label: "History", href: "/history", Icon: HistoryIcon },
+];
+
+export function AppNav({ activePage, stats }: { activePage: TabKey; stats: NavStats }) {
   return (
     <header className="sticky top-0 z-40 border-b border-navy/12 bg-white/[0.88] backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-[1120px] items-center justify-between gap-2 px-4 py-3 sm:gap-4 sm:px-6">
-        <Link href="/drills" aria-label="1500 SAT Blueprint home" className="inline-flex items-center">
-          <Logo />
+      <div className="mx-auto flex w-full max-w-[1120px] items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-6">
+        <Link href="/drills" aria-label="1500 SAT Blueprint home" className="inline-flex flex-none items-center">
+          <span className="sm:hidden">
+            <Logo withWordmark={false} />
+          </span>
+          <span className="hidden sm:inline-flex">
+            <Logo />
+          </span>
         </Link>
 
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
-          <span className="hidden items-center gap-1.5 rounded-full border border-gold-600/35 bg-[#fff7e6] px-3 py-[7px] text-sm font-bold text-flag sm:inline-flex">
-            <FlameIcon className="h-4 w-4 animate-flicker" />
-            {stats.streak}
-          </span>
+        <nav
+          aria-label="Primary"
+          className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden"
+        >
+          {TABS.map(({ key, label, href, Icon }) => {
+            const active = activePage === key;
+            return (
+              <Link
+                key={key}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                aria-label={label}
+                className={`inline-flex flex-none items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-colors ${
+                  active ? "bg-navy/[0.07] text-navy" : "text-navy/55 hover:bg-navy/[0.04] hover:text-navy"
+                }`}
+              >
+                <Icon className="h-[18px] w-[18px]" />
+                <span className="hidden lg:inline">{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-          <span className="hidden items-center gap-[7px] rounded-full bg-navy py-[7px] pl-[9px] pr-3 text-[13px] font-bold text-white sm:inline-flex">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand font-display text-[11px] leading-none">
-              {stats.level}
+        <div className="flex flex-none items-center gap-2 sm:gap-3.5">
+          <div className="hidden items-center gap-3.5 sm:flex">
+            <span className="inline-flex items-center gap-1 text-sm font-bold text-flag" title="Day streak">
+              <FlameIcon className="h-[18px] w-[18px] animate-flicker" />
+              {stats.streak}
             </span>
-            {stats.xp.toLocaleString()} XP
-          </span>
+            <span className="inline-flex items-center gap-1.5 text-sm font-bold text-navy" title={`Level ${stats.level}`}>
+              <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand font-display text-[10px] leading-none text-white">
+                {stats.level}
+              </span>
+              {stats.xp.toLocaleString()}
+              <span className="font-semibold text-navy/45">XP</span>
+            </span>
+          </div>
 
           {stats.isAdmin && (
             <Link
               href="/admin"
               aria-label="Admin panel"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gold-600/40 bg-[#fff7e6] px-3 py-2 text-sm font-semibold text-flag transition-colors hover:bg-[#ffefc7]"
+              title="Admin panel"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-flag transition-colors hover:bg-[#fff7e6]"
             >
-              <ShieldIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Admin</span>
+              <ShieldIcon className="h-[18px] w-[18px]" />
             </Link>
           )}
-          <Link
-            href="/flashcards"
-            aria-current={activePage === "flashcards" ? "page" : undefined}
-            aria-label="Flashcards"
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-              activePage === "flashcards"
-                ? "border-navy bg-navy text-white"
-                : "border-navy/20 bg-white text-navy hover:bg-navy/5"
-            }`}
-          >
-            <LayersIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Flashcards</span>
-          </Link>
-
-          <Link
-            href="/history"
-            aria-current={activePage === "history" ? "page" : undefined}
-            className={`rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
-              activePage === "history"
-                ? "border-navy bg-navy text-white"
-                : "border-navy/20 bg-white text-navy hover:bg-navy/5"
-            }`}
-          >
-            History
-          </Link>
-
-          <Link
-            href={cta.href}
-            className="rounded-lg border border-navy/20 bg-white px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-navy/5"
-          >
-            {cta.label}
-          </Link>
 
           <AccountMenu name={stats.name} initials={stats.initials} level={stats.level} plan={stats.plan} />
         </div>
