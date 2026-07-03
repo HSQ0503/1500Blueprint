@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Author, CommunityPost } from "@/lib/community/types";
 import { CATEGORY } from "@/lib/community/types";
 import {
@@ -14,6 +15,7 @@ import {
   TrashIcon,
 } from "./icons";
 import { Attachment } from "./Attachment";
+import { RichText } from "./RichText";
 
 // Small level chip shown next to the author name (Whop puts a creator/verified
 // badge here; our app is level-based, so surface the level).
@@ -36,6 +38,7 @@ export function PostCard({
   isAdmin?: boolean;
   onDelete?: (id: string) => void;
 }) {
+  const router = useRouter();
   const [liked, setLiked] = useState(post.liked);
   const [likes, setLikes] = useState(post.likes);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -136,10 +139,16 @@ export function PostCard({
           )}
         </div>
 
-        <Link href={`/community/${post.id}`} className="mt-2.5 block">
-          <p className="whitespace-pre-line text-[14px] leading-[1.6] text-ink/85">{post.body}</p>
+        {/* Body navigates to the thread on click; inner links stopPropagation,
+            so a URL in a post opens the URL, not the thread. (A nested <Link>
+            here would render invalid <a>-in-<a> around RichText links.) */}
+        <div
+          onClick={() => router.push(`/community/${post.id}`)}
+          className="mt-2.5 block cursor-pointer"
+        >
+          <RichText text={post.body} className="text-[14px] leading-[1.6] text-ink/85" />
           {post.shot && <Attachment shot={post.shot} />}
-        </Link>
+        </div>
       </div>
 
       <div className="mt-3 flex items-center gap-2 px-4 pb-3">

@@ -1,21 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Author, CommunityPost, PostComment } from "@/lib/community/types";
 import { CATEGORY } from "@/lib/community/types";
 import { Avatar, BackIcon, CommentIcon, EyeIcon, HeartIcon, KebabIcon, ShareIcon, TrashIcon } from "./icons";
 import { Attachment } from "./Attachment";
+import { RichText } from "./RichText";
 
-function CommentRow({
+// Who a reply composer is aimed at: always threads under a ROOT comment (one
+// level deep); `handle` is who gets the @mention prefill.
+type ReplyTarget = { rootId: string; handle: string };
+
+function ReplyComposer({
+  user,
+  target,
+  onSubmit,
+  onCancel,
+  posting,
+}: {
+  user: Author;
+  target: ReplyTarget;
+  onSubmit: (body: string) => void;
+  onCancel: () => void;
+  posting: boolean;
+}) {
+  const [draft, setDraft] = useState(`@${target.handle} `);
+
+  return (
+    <div className="mt-2 flex items-start gap-2">
+      <Avatar initials={user.initials} size={26} />
+      <div className="flex-1">
+        <textarea
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={2}
+          placeholder={`Reply to @${target.handle}…`}
+          // Put the caret after the prefilled mention on mount.
+          onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
+          className="w-full resize-none rounded-lg bg-haze px-3 py-2 text-[13.5px] leading-[1.55] text-ink outline-none ring-brand/40 transition-shadow placeholder:text-navy/40 focus:ring-2"
+        />
+        <div className="mt-1.5 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-navy/60 transition-colors hover:bg-navy/[0.06]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onSubmit(draft)}
+            disabled={!draft.trim() || posting}
+            className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+          >
+            {posting ? "Replying…" : "Reply"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommentBody({
   comment,
+  size,
   canModerate,
   onDelete,
+  onReply,
 }: {
   comment: PostComment;
+  size: number;
   canModerate: boolean;
   onDelete: (id: string) => void;
+  onReply: () => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -31,8 +91,8 @@ function CommentRow({
   }
 
   return (
-    <div className={`group flex gap-2.5 py-3.5 ${busy ? "opacity-50" : ""}`}>
-      <Avatar initials={comment.author.initials} size={34} />
+    <div className={`group flex gap-2.5 ${busy ? "opacity-50" : ""}`}>
+      <Avatar initials={comment.author.initials} size={size} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 leading-tight">
           <span className="text-[13.5px] font-bold text-ink">{comment.author.name}</span>
@@ -50,7 +110,14 @@ function CommentRow({
             </button>
           )}
         </div>
-        <p className="mt-1 text-[14px] leading-[1.55] text-ink/85">{comment.body}</p>
+        <RichText text={comment.body} className="mt-1 text-[14px] leading-[1.55] text-ink/85" />
+        <button
+          type="button"
+          onClick={onReply}
+          className="mt-1 text-[12px] font-bold text-navy/45 transition-colors hover:text-navy"
+        >
+          Reply
+        </button>
       </div>
     </div>
   );
@@ -71,9 +138,23 @@ export function PostDetail({
   const [comments, setComments] = useState<PostComment[]>(post.comments ?? []);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const cat = CATEGORY[post.category];
   const canModeratePost = isAdmin || post.authorHandle === user.handle;
+
+  // One-level threads: top-level comments in order, replies grouped under them.
+  const thread = useMemo(() => {
+    const roots = comments.filter((c) => !c.parentId);
+    const replies = new Map<string, PostComment[]>();
+    for (const c of comments) {
+      if (!c.parentId) continue;
+      const list = replies.get(c.parentId) ?? [];
+      list.push(c);
+      replies.set(c.parentId, list);
+    }
+    return { roots, replies };
+  }, [comments]);
 
   async function toggleLike() {
     const next = !liked;
@@ -91,25 +172,31 @@ export function PostDetail({
     }
   }
 
-  async function addComment() {
-    const body = draft.trim();
-    if (!body || posting) return;
+  async function submitComment(body: string, parentId: string | null) {
+    const text = body.trim();
+    if (!text || posting) return;
     setPosting(true);
     try {
       const res = await fetch(`/api/community/posts/${post.id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body: text, parentId }),
       });
       if (!res.ok) throw new Error();
       const { comment } = (await res.json()) as { comment: PostComment };
       setComments((prev) => [...prev, comment]);
-      setDraft("");
+      if (parentId) setReplyTo(null);
+      else setDraft("");
     } catch {
       // leave the draft in place so nothing is lost
     } finally {
       setPosting(false);
     }
+  }
+
+  // Deleting a root also removes its replies locally (the DB cascades).
+  function removeComment(id: string) {
+    setComments((prev) => prev.filter((c) => c.id !== id && c.parentId !== id));
   }
 
   async function deletePost() {
@@ -186,7 +273,7 @@ export function PostDetail({
           )}
         </header>
 
-        <p className="mt-3 whitespace-pre-line text-[15px] leading-[1.65] text-ink/90">{post.body}</p>
+        <RichText text={post.body} className="mt-3 text-[15px] leading-[1.65] text-ink/90" />
         {post.shot && <Attachment shot={post.shot} />}
 
         <div className="mt-4 flex items-center gap-2 border-t border-navy/[0.07] pt-3">
@@ -241,7 +328,7 @@ export function PostDetail({
             <div className="mt-2 flex justify-end">
               <button
                 type="button"
-                onClick={addComment}
+                onClick={() => submitComment(draft, null)}
                 disabled={!draft.trim() || posting}
                 className="rounded-lg bg-brand px-4 py-2 text-[13px] font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
               >
@@ -251,16 +338,47 @@ export function PostDetail({
           </div>
         </div>
 
-        {comments.length > 0 && (
+        {thread.roots.length > 0 && (
           <div className="mt-1 divide-y divide-navy/[0.07] border-t border-navy/[0.07]">
-            {comments.map((c) => (
-              <CommentRow
-                key={c.id}
-                comment={c}
-                canModerate={isAdmin || c.authorHandle === user.handle}
-                onDelete={(id) => setComments((prev) => prev.filter((x) => x.id !== id))}
-              />
-            ))}
+            {thread.roots.map((c) => {
+              const replies = thread.replies.get(c.id) ?? [];
+              return (
+                <div key={c.id} className="py-3.5">
+                  <CommentBody
+                    comment={c}
+                    size={34}
+                    canModerate={isAdmin || c.authorHandle === user.handle}
+                    onDelete={removeComment}
+                    onReply={() => setReplyTo({ rootId: c.id, handle: c.author.handle })}
+                  />
+
+                  {/* Replies: indented under the root with a thread line. */}
+                  {(replies.length > 0 || replyTo?.rootId === c.id) && (
+                    <div className="ml-[17px] mt-2.5 flex flex-col gap-3 border-l-2 border-navy/[0.08] pl-[22px]">
+                      {replies.map((r) => (
+                        <CommentBody
+                          key={r.id}
+                          comment={r}
+                          size={26}
+                          canModerate={isAdmin || r.authorHandle === user.handle}
+                          onDelete={removeComment}
+                          onReply={() => setReplyTo({ rootId: c.id, handle: r.author.handle })}
+                        />
+                      ))}
+                      {replyTo?.rootId === c.id && (
+                        <ReplyComposer
+                          user={user}
+                          target={replyTo}
+                          posting={posting}
+                          onSubmit={(body) => submitComment(body, c.id)}
+                          onCancel={() => setReplyTo(null)}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

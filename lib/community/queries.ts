@@ -39,6 +39,8 @@ type CommentRow = {
   author_handle: string;
   author_level: number;
   body: string;
+  /** Absent until the reply migration (community.sql re-run) has been applied. */
+  parent_id?: string | null;
   created_at: string;
 };
 
@@ -46,8 +48,10 @@ const POST_BASE =
   "id,author_email,author_name,author_initials,author_handle,author_level,category,body,image_url,view_count,created_at";
 const POST_SELECT = `${POST_BASE},community_comments(count),community_likes(count)`;
 
-const COMMENT_SELECT =
-  "id,author_name,author_initials,author_handle,author_level,body,created_at";
+// Comments select "*" (not an explicit column list) so the same code works
+// before AND after the reply migration adds parent_id — a listed-but-missing
+// column would error the whole query. mapComment reads parent_id defensively.
+const COMMENT_SELECT = "*";
 
 // Relative timestamp for the feed ("now", "3h", "2d", "Jul 1").
 function relativeTime(iso: string): string {
@@ -99,6 +103,7 @@ function mapComment(row: CommentRow): PostComment {
     authorHandle: row.author_handle,
     timeAgo: relativeTime(row.created_at),
     body: row.body,
+    parentId: row.parent_id ?? null,
   };
 }
 
@@ -231,18 +236,40 @@ export async function addComment(
   postId: string,
   author: PostAuthor,
   body: string,
+  parentId: string | null = null,
 ): Promise<PostComment | null> {
-  const { data, error } = await supabaseAdmin()
+  const db = supabaseAdmin();
+
+  // Threads are one level deep: validate the parent belongs to this post, and
+  // if the target is itself a reply, attach to ITS parent (Instagram-style).
+  let resolvedParent: string | null = null;
+  if (parentId) {
+    const { data: parent } = await db
+      .from("community_comments")
+      .select("id,post_id,parent_id")
+      .eq("id", parentId)
+      .maybeSingle();
+    const p = parent as { id: string; post_id: string; parent_id: string | null } | null;
+    if (!p || p.post_id !== postId) return null;
+    resolvedParent = p.parent_id ?? p.id;
+  }
+
+  // parent_id is only included for replies, so top-level comments keep working
+  // on a DB that predates the reply migration (re-running community.sql adds it).
+  const row: Record<string, unknown> = {
+    post_id: postId,
+    author_email: author.email,
+    author_name: author.name,
+    author_initials: author.initials,
+    author_handle: author.handle,
+    author_level: author.level,
+    body,
+  };
+  if (resolvedParent) row.parent_id = resolvedParent;
+
+  const { data, error } = await db
     .from("community_comments")
-    .insert({
-      post_id: postId,
-      author_email: author.email,
-      author_name: author.name,
-      author_initials: author.initials,
-      author_handle: author.handle,
-      author_level: author.level,
-      body,
-    })
+    .insert(row)
     .select(COMMENT_SELECT)
     .single();
   if (error || !data) return null;

@@ -49,6 +49,13 @@ create table if not exists public.community_comments (
 
 create index if not exists community_comments_post_idx on public.community_comments(post_id, created_at);
 
+-- Reply threads (added 2026-07-02, idempotent upgrade — re-run this file to add).
+-- One level deep: a reply's parent is always a TOP-LEVEL comment (the API
+-- flattens deeper replies to the root, Instagram-style). Deleting a parent
+-- cascades its replies.
+alter table public.community_comments
+  add column if not exists parent_id text references public.community_comments(id) on delete cascade;
+
 -- ---------------------------------------------------------------------------
 -- 3. community_likes — one row per (post, member). Unique constraint makes a
 --    like idempotent; the toggle route inserts/deletes against it.

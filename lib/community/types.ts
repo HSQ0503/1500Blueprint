@@ -25,6 +25,8 @@ export type PostComment = {
   authorHandle: string; // for the "can I delete this" check on the client
   timeAgo: string;
   body: string;
+  /** Top-level comment id this is a reply to; null for a top-level comment. */
+  parentId: string | null;
 };
 
 export type CommunityPost = {

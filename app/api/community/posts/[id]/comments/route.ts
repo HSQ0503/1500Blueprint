@@ -11,9 +11,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => ({}))) as { body?: string };
+  const body = (await req.json().catch(() => ({}))) as { body?: string; parentId?: string | null };
   const text = (body.body ?? "").trim();
   if (!text) return NextResponse.json({ error: "empty" }, { status: 400 });
+  const parentId = typeof body.parentId === "string" && body.parentId ? body.parentId : null;
 
   const hub = await getHubState(session.email);
   const author = {
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     level: hub.player.level,
   };
 
-  const comment = await addComment(id, author, text);
+  const comment = await addComment(id, author, text, parentId);
   if (!comment) return NextResponse.json({ error: "comment_failed" }, { status: 500 });
   return NextResponse.json({ comment }, { status: 201 });
 }
