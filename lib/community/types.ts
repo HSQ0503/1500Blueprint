@@ -5,6 +5,7 @@
 export type CommunityCategory =
   | "general"
   | "scores"
+  | "assignments"
   | "questions"
   | "wins"
   | "plans";
@@ -57,6 +58,7 @@ export type TopMember = {
 export const CATEGORY: Record<CommunityCategory, { label: string; dot: string }> = {
   general: { label: "General", dot: "bg-navy/40" },
   scores: { label: "Score Drops", dot: "bg-gold-600" },
+  assignments: { label: "Assignment Submissions", dot: "bg-flag" },
   questions: { label: "Questions", dot: "bg-brand" },
   wins: { label: "Wins", dot: "bg-success" },
   plans: { label: "Study Plans", dot: "bg-[#7c6cff]" },
@@ -66,6 +68,7 @@ export const CATEGORY: Record<CommunityCategory, { label: string; dot: string }>
 export const CATEGORY_ORDER: CommunityCategory[] = [
   "general",
   "scores",
+  "assignments",
   "questions",
   "wins",
   "plans",

@@ -21,7 +21,7 @@ create table if not exists public.community_posts (
   author_initials text not null default '',
   author_handle   text not null default '',
   author_level    int  not null default 1,
-  category        text not null default 'general',  -- general|scores|questions|wins|plans
+  category        text not null default 'general',  -- general|scores|assignments|questions|wins|plans
   body            text not null default '',
   image_url       text,                              -- optional screenshot (figures bucket)
   view_count      int  not null default 0,
