@@ -183,13 +183,18 @@ export async function createSet(ownerEmail: string, input: SetInput): Promise<st
   if (error || !data) return null;
 
   const id = (data as { id: string }).id;
-  await insertCards(id, input.cards);
+  // If the cards fail to insert, roll back the set so we never leave an empty
+  // shell behind — and the caller reports a clean failure instead of "success".
+  if (!(await insertCards(id, input.cards))) {
+    await db.from("flashcard_sets").delete().eq("id", id);
+    return null;
+  }
   return id;
 }
 
-export async function updateSet(id: string, input: SetInput): Promise<void> {
+export async function updateSet(id: string, input: SetInput): Promise<boolean> {
   const db = supabaseAdmin();
-  await db
+  const { error } = await db
     .from("flashcard_sets")
     .update({
       title: input.title.trim() || "Untitled set",
@@ -197,7 +202,8 @@ export async function updateSet(id: string, input: SetInput): Promise<void> {
       visibility: input.visibility,
     })
     .eq("id", id);
-  await replaceCards(id, input.cards);
+  if (error) return false;
+  return replaceCards(id, input.cards);
 }
 
 export async function deleteSet(id: string): Promise<void> {
@@ -205,13 +211,19 @@ export async function deleteSet(id: string): Promise<void> {
 }
 
 // Cascade-replace the card list (mirrors replaceWalkthrough in admin-queries).
-async function replaceCards(setId: string, cards: CardInput[]): Promise<void> {
+// Returns false if the re-insert fails so the caller can surface the error.
+async function replaceCards(setId: string, cards: CardInput[]): Promise<boolean> {
   await supabaseAdmin().from("flashcard_cards").delete().eq("set_id", setId);
-  await insertCards(setId, cards);
+  return insertCards(setId, cards);
 }
 
-async function insertCards(setId: string, cards: CardInput[]): Promise<void> {
+async function insertCards(setId: string, cards: CardInput[]): Promise<boolean> {
   const rows = cleanCards(cards).map((c) => ({ set_id: setId, ...c }));
-  if (rows.length === 0) return;
-  await supabaseAdmin().from("flashcard_cards").insert(rows);
+  if (rows.length === 0) return true;
+  const { error } = await supabaseAdmin().from("flashcard_cards").insert(rows);
+  if (error) {
+    console.error("flashcard insertCards failed:", error.message);
+    return false;
+  }
+  return true;
 }

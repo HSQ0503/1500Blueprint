@@ -26,12 +26,13 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const visibility: SetVisibility =
     body.visibility === "shared" && isAdminEmail(session.email) ? "shared" : "private";
 
-  await updateSet(id, {
+  const ok = await updateSet(id, {
     title: body.title ?? "",
     description: body.description ?? null,
     visibility,
     cards: Array.isArray(body.cards) ? body.cards : [],
   });
+  if (!ok) return NextResponse.json({ error: "update_failed" }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
 
