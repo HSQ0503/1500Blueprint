@@ -53,8 +53,9 @@ const POST_SELECT = `${POST_BASE},community_comments(count),community_likes(coun
 // column would error the whole query. mapComment reads parent_id defensively.
 const COMMENT_SELECT = "*";
 
-// Relative timestamp for the feed ("now", "3h", "2d", "Jul 1").
-function relativeTime(iso: string): string {
+// Relative timestamp for the feed ("now", "3h", "2d", "Jul 1"). Exported so the
+// notifications layer renders timestamps identically.
+export function relativeTime(iso: string): string {
   const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
   if (seconds < 60) return "now";
   const minutes = Math.floor(seconds / 60);

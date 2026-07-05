@@ -8,6 +8,20 @@ import { PostCard } from "./PostCard";
 
 type Filter = CommunityCategory | "all";
 
+// Pull the first image out of a paste or drop (clipboard screenshots arrive as
+// image/png). Index-based loop — DataTransferItemList isn't iterable.
+function imageFromTransfer(data: DataTransfer | null): File | null {
+  if (!data) return null;
+  for (let i = 0; i < data.items.length; i++) {
+    const item = data.items[i];
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      const f = item.getAsFile();
+      if (f) return f;
+    }
+  }
+  return null;
+}
+
 // The resting + expanded composer. Uploads the screenshot first (if any), then
 // creates the post; the created row (with its real id + counts) is handed back
 // to the feed to prepend.
@@ -40,6 +54,15 @@ function Composer({ user, onCreated }: { user: Author; onCreated: (post: Communi
     setFile(null);
     setPreview(null);
     if (fileInput.current) fileInput.current.value = "";
+  }
+
+  // Paste/drop an image straight into the post. Returns true if one was taken,
+  // so the handler can preventDefault (and skip pasting the image as junk text).
+  function takeImageFrom(data: DataTransfer | null): boolean {
+    const img = imageFromTransfer(data);
+    if (!img) return false;
+    pickFile(img);
+    return true;
   }
 
   async function submit() {
@@ -95,13 +118,24 @@ function Composer({ user, onCreated }: { user: Author; onCreated: (post: Communi
   }
 
   return (
-    <div className="rounded-xl border border-navy/10 bg-white p-3.5">
+    <div
+      className="rounded-xl border border-navy/10 bg-white p-3.5"
+      onDrop={(e) => {
+        if (takeImageFrom(e.dataTransfer)) e.preventDefault();
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+      }}
+    >
       <div className="flex items-start gap-2.5">
         <Avatar initials={user.initials} size={38} />
         <textarea
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            if (takeImageFrom(e.clipboardData)) e.preventDefault();
+          }}
           rows={4}
           placeholder="What do you want to share with the community?"
           className="min-h-[92px] flex-1 resize-none rounded-lg bg-haze px-3.5 py-3 text-[14px] leading-[1.6] text-ink outline-none ring-brand/40 transition-shadow placeholder:text-navy/40 focus:ring-2"
@@ -138,7 +172,7 @@ function Composer({ user, onCreated }: { user: Author; onCreated: (post: Communi
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-navy/20 bg-haze/60 py-2.5 text-[13px] font-semibold text-navy/55 transition-colors hover:border-brand/50 hover:text-navy"
         >
           <ImageIcon className="h-[18px] w-[18px]" />
-          Add a screenshot
+          Add a screenshot — or paste / drop it in
         </button>
       )}
 

@@ -45,6 +45,19 @@ export type CommunityPost = {
   comments?: PostComment[];
 };
 
+// A homepage notification: someone @mentioned you, or replied to your comment.
+// Rendered by the AppNav bell (components/shell/NotificationBell).
+export type CommunityNotification = {
+  id: string;
+  kind: "mention" | "reply";
+  actorName: string;
+  actorHandle: string;
+  postId: string | null;
+  excerpt: string;
+  timeAgo: string;
+  read: boolean;
+};
+
 // Right-rail "top members this week".
 export type TopMember = {
   name: string;

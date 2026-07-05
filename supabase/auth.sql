@@ -32,6 +32,10 @@ create table if not exists public.users (
 
 create index if not exists users_email_idx on public.users(email);
 
+-- Optional profile picture (public URL in the "figures" bucket). Added after the
+-- first release; idempotent, so re-running this file upgrades an install in place.
+alter table public.users add column if not exists avatar_url text;
+
 alter table public.users enable row level security;
 
 -- Atomic upsert: insert on first login, otherwise bump plan/last_login/count.

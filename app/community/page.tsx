@@ -32,6 +32,7 @@ export default async function CommunityPage() {
     xp: hub.player.xp,
     name: hub.player.name,
     initials: hub.player.initials,
+    avatarUrl: hub.player.avatarUrl,
     plan: hub.player.plan,
     isAdmin,
   };

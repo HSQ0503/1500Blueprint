@@ -27,6 +27,7 @@ export default async function FlashcardsPage() {
     xp: hub.player.xp,
     name: hub.player.name,
     initials: hub.player.initials,
+    avatarUrl: hub.player.avatarUrl,
     plan: hub.player.plan,
     isAdmin: isAdminEmail(session.email),
   };

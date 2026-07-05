@@ -1,5 +1,6 @@
 import type { Player, StreakDay } from "@/lib/gamification";
 import { FlameIcon } from "@/components/shell/icons";
+import { Avatar } from "@/components/shell/Avatar";
 
 type Props = {
   player: Player;
@@ -23,9 +24,12 @@ export function StatsCard({ player, weeklyStreak, todayIndex, dailyGoal }: Props
             className="relative flex h-[78px] w-[78px] flex-none items-center justify-center rounded-full"
             style={{ background: `conic-gradient(#3fa9f5 0% ${levelPct}%, rgba(11,42,91,0.12) ${levelPct}% 100%)` }}
           >
-            <div className="flex h-[66px] w-[66px] items-center justify-center rounded-full border-[3px] border-white bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display text-2xl font-extrabold text-white">
-              {player.initials}
-            </div>
+            <Avatar
+              src={player.avatarUrl}
+              initials={player.initials}
+              alt={player.name}
+              className="h-[66px] w-[66px] border-[3px] border-white text-2xl"
+            />
             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-white bg-navy px-2 py-0.5 font-display text-[10px] font-extrabold leading-none tracking-[0.05em] text-white">
               LVL {player.level}
             </span>

@@ -78,6 +78,19 @@ async function loadUser(email: string): Promise<UserRow | null> {
   return data ?? null;
 }
 
+// Defensive read for the avatar URL, kept separate from loadUser so a missing
+// avatar_url column (before supabase/auth.sql is re-run) can never break the
+// gamification reads or the nav — it just falls back to null (initials shown).
+async function loadAvatarUrl(email: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("users")
+    .select("avatar_url")
+    .eq("email", email)
+    .maybeSingle<{ avatar_url: string | null }>();
+  if (error) return null;
+  return data?.avatar_url ?? null;
+}
+
 // Assemble everything the hub needs for one student in a single call.
 export async function getHubState(email: string): Promise<HubState> {
   const db = supabaseAdmin();
@@ -99,10 +112,11 @@ export async function getHubState(email: string): Promise<HubState> {
   const perDayDrills = Array<number>(7).fill(0);
   const perDayTests = Array<number>(7).fill(0);
 
-  const [weekEvents, weekDrills, weekTests] = await Promise.all([
+  const [weekEvents, weekDrills, weekTests, avatarUrl] = await Promise.all([
     db.from("xp_events").select("amount,created_at").eq("email", email).gte("created_at", weekStartIso).returns<{ amount: number; created_at: string }[]>(),
     db.from("drill_attempts").select("created_at").eq("email", email).gte("created_at", weekStartIso).returns<{ created_at: string }[]>(),
     db.from("test_attempts").select("created_at").eq("email", email).gte("created_at", weekStartIso).returns<{ created_at: string }[]>(),
+    loadAvatarUrl(email),
   ]);
   for (const e of weekEvents.data ?? []) {
     const i = dayIndex(e.created_at);
@@ -180,6 +194,7 @@ export async function getHubState(email: string): Promise<HubState> {
     name: id.name,
     firstName: id.firstName,
     initials: id.initials,
+    avatarUrl,
     level: prog.level,
     xp,
     xpForNextLevel: prog.ceil,
@@ -516,7 +531,7 @@ export async function getTestAttempt(
 
 // Lightweight stats for the shared top nav, without the full hub query.
 export async function getNavStats(email: string): Promise<NavStats> {
-  const user = await loadUser(email);
+  const [user, avatarUrl] = await Promise.all([loadUser(email), loadAvatarUrl(email)]);
   const xp = user?.xp ?? 0;
   const id = identity(email, user?.name ?? null);
   return {
@@ -525,6 +540,7 @@ export async function getNavStats(email: string): Promise<NavStats> {
     xp,
     name: id.name,
     initials: id.initials,
+    avatarUrl,
     plan: user?.plan ?? "1500 Club",
     isAdmin: isAdminEmail(email),
   };

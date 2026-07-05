@@ -4,6 +4,7 @@ import type { NavStats } from "@/lib/gamification";
 import { LayersIcon } from "@/components/flashcards/icons";
 import { CommunityIcon } from "@/components/community/icons";
 import { AccountMenu } from "./AccountMenu";
+import { NotificationBell } from "./NotificationBell";
 import { DrillsIcon, FlameIcon, HistoryIcon, ShieldIcon, TestsIcon } from "./icons";
 
 type TabKey = "drills" | "tests" | "history" | "flashcards" | "community";
@@ -81,7 +82,15 @@ export function AppNav({ activePage, stats }: { activePage: TabKey; stats: NavSt
             </Link>
           )}
 
-          <AccountMenu name={stats.name} initials={stats.initials} level={stats.level} plan={stats.plan} />
+          <NotificationBell />
+
+          <AccountMenu
+            name={stats.name}
+            initials={stats.initials}
+            level={stats.level}
+            plan={stats.plan}
+            avatarUrl={stats.avatarUrl}
+          />
         </div>
       </div>
     </header>

@@ -6,6 +6,7 @@ export type Player = {
   name: string;
   firstName: string;
   initials: string;
+  avatarUrl: string | null;
   level: number;
   xp: number;
   xpForNextLevel: number;
@@ -24,6 +25,7 @@ export type NavStats = {
   xp: number;
   name: string;
   initials: string;
+  avatarUrl: string | null;
   plan: string;
   isAdmin: boolean;
 };

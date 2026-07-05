@@ -28,6 +28,7 @@ export default async function CommunityPostPage({
     xp: hub.player.xp,
     name: hub.player.name,
     initials: hub.player.initials,
+    avatarUrl: hub.player.avatarUrl,
     plan: hub.player.plan,
     isAdmin,
   };

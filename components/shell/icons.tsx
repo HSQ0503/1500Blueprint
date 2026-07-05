@@ -75,6 +75,16 @@ export function HistoryIcon({ className }: IconProps) {
   );
 }
 
+// Bell — homepage notifications (currentColor stroke).
+export function BellIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M6 9.5a6 6 0 0 1 12 0c0 3.6 1.2 5 1.2 5H4.8s1.2-1.4 1.2-5Z" strokeLinejoin="round" />
+      <path d="M9.8 18.5a2.2 2.2 0 0 0 4.4 0" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Shield with a check — admin panel entry (currentColor stroke).
 export function ShieldIcon({ className }: IconProps) {
   return (
