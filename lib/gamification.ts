@@ -39,6 +39,7 @@ export type LeaderRow = {
   name: string;
   xp: string;
   initials: string;
+  avatarUrl: string | null;
   you: boolean;
 };
 

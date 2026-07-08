@@ -1,4 +1,5 @@
 import type { LeaderRow, Player } from "@/lib/gamification";
+import { Avatar } from "@/components/shell/Avatar";
 
 export function Leaderboard({ leaderboard, player }: { leaderboard: LeaderRow[]; player: Player }) {
   return (
@@ -23,9 +24,12 @@ export function Leaderboard({ leaderboard, player }: { leaderboard: LeaderRow[];
             >
               {p.rank}
             </span>
-            <span className="inline-flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display text-xs font-extrabold text-white">
-              {p.initials}
-            </span>
+            <Avatar
+              src={p.avatarUrl}
+              initials={p.initials}
+              alt={p.name}
+              className="h-[30px] w-[30px] flex-none text-xs"
+            />
             <span className="min-w-0 flex-1 text-sm font-semibold text-ink">{p.name}</span>
             <span className="font-display text-sm font-bold text-navy">{p.xp}</span>
           </div>

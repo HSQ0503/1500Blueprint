@@ -91,6 +91,21 @@ async function loadAvatarUrl(email: string): Promise<string | null> {
   return data?.avatar_url ?? null;
 }
 
+// Batch avatar lookup keyed by email, for surfaces that show many people at once
+// (the leaderboard). Same defensive contract as loadAvatarUrl: any error (e.g. a
+// missing avatar_url column) yields an empty map, so callers fall back to initials.
+async function loadAvatarUrls(emails: string[]): Promise<Map<string, string | null>> {
+  const unique = [...new Set(emails)];
+  if (unique.length === 0) return new Map();
+  const { data, error } = await supabaseAdmin()
+    .from("users")
+    .select("email,avatar_url")
+    .in("email", unique)
+    .returns<{ email: string; avatar_url: string | null }[]>();
+  if (error || !data) return new Map();
+  return new Map(data.map((r) => [r.email, r.avatar_url ?? null]));
+}
+
 // Assemble everything the hub needs for one student in a single call.
 export async function getHubState(email: string): Promise<HubState> {
   const db = supabaseAdmin();
@@ -153,7 +168,11 @@ export async function getHubState(email: string): Promise<HubState> {
   rows.sort((a, b) => b.weeklyXp - a.weeklyXp);
   const myIndex = rows.findIndex((r) => r.email === email);
   const rival = myIndex > 0 ? rows[myIndex - 1] : null;
-  const leaderboard: LeaderRow[] = rows.slice(0, 5).map((r, i) => {
+  const topRows = rows.slice(0, 5);
+  // The current user's avatar is already loaded; fetch the rest in one batch so
+  // the leaderboard shows everyone's photo, not just initials.
+  const lbAvatars = await loadAvatarUrls(topRows.map((r) => r.email));
+  const leaderboard: LeaderRow[] = topRows.map((r, i) => {
     const you = r.email === email;
     const who = identity(r.email, null);
     return {
@@ -161,6 +180,7 @@ export async function getHubState(email: string): Promise<HubState> {
       name: you ? "You" : who.name,
       xp: r.weeklyXp.toLocaleString(),
       initials: who.initials,
+      avatarUrl: you ? avatarUrl : lbAvatars.get(r.email) ?? null,
       you,
     };
   });

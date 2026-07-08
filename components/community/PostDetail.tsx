@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Author, CommunityPost, PostComment } from "@/lib/community/types";
 import { CATEGORY } from "@/lib/community/types";
-import { Avatar, BackIcon, CommentIcon, EyeIcon, HeartIcon, KebabIcon, ShareIcon, TrashIcon } from "./icons";
+import { BackIcon, CommentIcon, EyeIcon, HeartIcon, KebabIcon, ShareIcon, TrashIcon } from "./icons";
+import { Avatar } from "./Avatar";
 import { Attachment } from "./Attachment";
 import { RichText } from "./RichText";
 
@@ -30,7 +31,7 @@ function ReplyComposer({
 
   return (
     <div className="mt-2 flex items-start gap-2">
-      <Avatar initials={user.initials} size={26} />
+      <Avatar src={user.avatarUrl} initials={user.initials} size={26} />
       <div className="flex-1">
         <textarea
           autoFocus
@@ -92,7 +93,7 @@ function CommentBody({
 
   return (
     <div className={`group flex gap-2.5 ${busy ? "opacity-50" : ""}`}>
-      <Avatar initials={comment.author.initials} size={size} />
+      <Avatar src={comment.author.avatarUrl} initials={comment.author.initials} alt={comment.author.name} size={size} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 leading-tight">
           <span className="text-[13.5px] font-bold text-ink">{comment.author.name}</span>
@@ -228,7 +229,7 @@ export function PostDetail({
         </div>
 
         <header className="flex items-center gap-2.5">
-          <Avatar initials={post.author.initials} size={42} />
+          <Avatar src={post.author.avatarUrl} initials={post.author.initials} alt={post.author.name} size={42} />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="flex items-center gap-1.5">
               <span className="truncate text-[15px] font-bold text-ink">{post.author.name}</span>
@@ -316,7 +317,7 @@ export function PostDetail({
         </div>
 
         <div className="flex items-start gap-2.5 pt-3">
-          <Avatar initials={user.initials} size={34} />
+          <Avatar src={user.avatarUrl} initials={user.initials} size={34} />
           <div className="flex-1">
             <textarea
               value={draft}

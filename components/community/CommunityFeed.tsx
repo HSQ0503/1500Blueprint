@@ -3,7 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import type { Author, CommunityCategory, CommunityPost } from "@/lib/community/types";
 import { CATEGORY, CATEGORY_ORDER } from "@/lib/community/types";
-import { Avatar, ImageIcon } from "./icons";
+import { ImageIcon } from "./icons";
+import { Avatar } from "./Avatar";
 import { PostCard } from "./PostCard";
 
 type Filter = CommunityCategory | "all";
@@ -97,7 +98,7 @@ function Composer({ user, onCreated }: { user: Author; onCreated: (post: Communi
   if (!open) {
     return (
       <div className="flex items-center gap-2.5 rounded-xl border border-navy/10 bg-white p-2.5">
-        <Avatar initials={user.initials} size={38} />
+        <Avatar src={user.avatarUrl} initials={user.initials} size={38} />
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -128,7 +129,7 @@ function Composer({ user, onCreated }: { user: Author; onCreated: (post: Communi
       }}
     >
       <div className="flex items-start gap-2.5">
-        <Avatar initials={user.initials} size={38} />
+        <Avatar src={user.avatarUrl} initials={user.initials} size={38} />
         <textarea
           autoFocus
           value={text}

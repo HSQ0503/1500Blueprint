@@ -1,5 +1,5 @@
 import type { TopMember } from "@/lib/community/types";
-import { Avatar } from "./icons";
+import { Avatar } from "./Avatar";
 
 // Desktop-only side rail modeled on Whop's right column: a compact "about" blurb
 // + a "Top members" list driven by real post counts (community_top_members RPC).
@@ -39,7 +39,7 @@ export function RightRail({ topMembers }: { topMembers: TopMember[] }) {
                 >
                   {i + 1}
                 </span>
-                <Avatar initials={m.initials} size={32} />
+                <Avatar src={m.avatarUrl} initials={m.initials} alt={m.name} size={32} />
                 <div className="min-w-0 flex-1 leading-tight">
                   <div className="truncate text-[13px] font-bold text-ink">{m.name}</div>
                   <div className="truncate text-[11.5px] text-navy/45">

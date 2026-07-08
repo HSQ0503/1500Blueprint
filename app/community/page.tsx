@@ -41,6 +41,7 @@ export default async function CommunityPage() {
     initials: hub.player.initials,
     handle: session.email.split("@")[0],
     level: hub.player.level,
+    avatarUrl: hub.player.avatarUrl,
   };
 
   return (

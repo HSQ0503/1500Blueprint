@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import type { Author, CommunityPost } from "@/lib/community/types";
 import { CATEGORY } from "@/lib/community/types";
 import {
-  Avatar,
   CommentIcon,
   EyeIcon,
   HeartIcon,
@@ -14,6 +13,7 @@ import {
   ShareIcon,
   TrashIcon,
 } from "./icons";
+import { Avatar } from "./Avatar";
 import { Attachment } from "./Attachment";
 import { RichText } from "./RichText";
 
@@ -87,7 +87,7 @@ export function PostCard({
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Avatar initials={post.author.initials} size={38} />
+          <Avatar src={post.author.avatarUrl} initials={post.author.initials} alt={post.author.name} size={38} />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="flex items-center gap-1.5">
               <span className="truncate text-[14px] font-bold text-ink">{post.author.name}</span>
@@ -193,7 +193,7 @@ export function PostCard({
         href={`/community/${post.id}`}
         className="flex items-center gap-2.5 border-t border-navy/[0.07] px-4 py-2.5"
       >
-        <Avatar initials={currentUser.initials} size={28} />
+        <Avatar src={currentUser.avatarUrl} initials={currentUser.initials} size={28} />
         <span className="flex-1 rounded-full bg-haze px-3.5 py-1.5 text-[13px] text-navy/45">
           Write a comment…
         </span>

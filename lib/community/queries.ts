@@ -13,7 +13,10 @@ import type {
   TopMember,
 } from "./types";
 
-// Author snapshot written onto a post/comment (email + display fields).
+// Author snapshot written onto a post/comment (email + display fields). The
+// snapshot never includes the avatar — that's joined live from users.avatar_url
+// so a changed pfp shows everywhere — but the writer passes its current avatarUrl
+// through so the freshly-created row renders with a photo without a re-fetch.
 export type PostAuthor = Author & { email: string };
 
 type PostRow = {
@@ -34,6 +37,7 @@ type PostRow = {
 
 type CommentRow = {
   id: string;
+  author_email: string;
   author_name: string;
   author_initials: string;
   author_handle: string;
@@ -69,7 +73,7 @@ export function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function mapPost(row: PostRow, liked: Set<string>): CommunityPost {
+function mapPost(row: PostRow, liked: Set<string>, avatarUrl: string | null = null): CommunityPost {
   return {
     id: row.id,
     author: {
@@ -77,6 +81,7 @@ function mapPost(row: PostRow, liked: Set<string>): CommunityPost {
       handle: row.author_handle,
       initials: row.author_initials,
       level: row.author_level,
+      avatarUrl,
     },
     authorHandle: row.author_handle,
     category: row.category as CommunityCategory,
@@ -92,7 +97,7 @@ function mapPost(row: PostRow, liked: Set<string>): CommunityPost {
   };
 }
 
-function mapComment(row: CommentRow): PostComment {
+function mapComment(row: CommentRow, avatarUrl: string | null = null): PostComment {
   return {
     id: row.id,
     author: {
@@ -100,6 +105,7 @@ function mapComment(row: CommentRow): PostComment {
       handle: row.author_handle,
       initials: row.author_initials,
       level: row.author_level,
+      avatarUrl,
     },
     authorHandle: row.author_handle,
     timeAgo: relativeTime(row.created_at),
@@ -119,6 +125,21 @@ async function likedIdsFor(email: string, postIds: string[]): Promise<Set<string
   return new Set((data as { post_id: string }[] | null)?.map((r) => r.post_id) ?? []);
 }
 
+// Current profile photos for a set of author emails, joined from users.avatar_url
+// at read time (author rows only snapshot name/initials/level). Defensive: any
+// error yields an empty map, so authors fall back to their initials.
+async function avatarsByEmail(emails: string[]): Promise<Map<string, string | null>> {
+  const unique = [...new Set(emails)].filter(Boolean);
+  if (unique.length === 0) return new Map();
+  const { data, error } = await supabaseAdmin()
+    .from("users")
+    .select("email,avatar_url")
+    .in("email", unique)
+    .returns<{ email: string; avatar_url: string | null }[]>();
+  if (error || !data) return new Map();
+  return new Map(data.map((r) => [r.email, r.avatar_url ?? null]));
+}
+
 // ---------------------------------------------------------------------------
 // Reads
 // ---------------------------------------------------------------------------
@@ -136,8 +157,11 @@ export async function listPosts(
 
   const { data } = await query;
   const rows = (data as PostRow[] | null) ?? [];
-  const liked = await likedIdsFor(viewerEmail, rows.map((r) => r.id));
-  return rows.map((r) => mapPost(r, liked));
+  const [liked, avatars] = await Promise.all([
+    likedIdsFor(viewerEmail, rows.map((r) => r.id)),
+    avatarsByEmail(rows.map((r) => r.author_email)),
+  ]);
+  return rows.map((r) => mapPost(r, liked, avatars.get(r.author_email) ?? null));
 }
 
 export async function getPost(id: string, viewerEmail: string): Promise<CommunityPost | null> {
@@ -146,20 +170,23 @@ export async function getPost(id: string, viewerEmail: string): Promise<Communit
   const row = data as PostRow | null;
   if (!row) return null;
 
-  const liked = await likedIdsFor(viewerEmail, [id]);
-  const post = mapPost(row, liked);
-
-  // Load the thread and bump the view counter in parallel. The increment is
-  // best-effort — a failure (or a missing function pre-migration) never breaks
+  // Load likes + the thread and bump the view counter in parallel. The increment
+  // is best-effort — a failure (or a missing function pre-migration) never breaks
   // the render.
-  const [{ data: comments }] = await Promise.all([
+  const [liked, { data: comments }] = await Promise.all([
+    likedIdsFor(viewerEmail, [id]),
     db.from("community_comments").select(COMMENT_SELECT).eq("post_id", id).order("created_at", { ascending: true }),
     db.rpc("increment_post_views", { pid: id }).then(
       () => {},
       () => {},
     ),
   ]);
-  post.comments = (comments as CommentRow[] | null)?.map(mapComment) ?? [];
+  const commentRows = (comments as CommentRow[] | null) ?? [];
+
+  // One avatar lookup covers the post author and every commenter.
+  const avatars = await avatarsByEmail([row.author_email, ...commentRows.map((c) => c.author_email)]);
+  const post = mapPost(row, liked, avatars.get(row.author_email) ?? null);
+  post.comments = commentRows.map((c) => mapComment(c, avatars.get(c.author_email) ?? null));
 
   return post;
 }
@@ -167,13 +194,15 @@ export async function getPost(id: string, viewerEmail: string): Promise<Communit
 export async function listTopMembers(limit = 4): Promise<TopMember[]> {
   const { data } = await supabaseAdmin().rpc("community_top_members", { lim: limit });
   const rows = (data as
-    | { author_name: string; author_initials: string; author_level: number; post_count: number }[]
+    | { author_email: string; author_name: string; author_initials: string; author_level: number; post_count: number }[]
     | null) ?? [];
+  const avatars = await avatarsByEmail(rows.map((r) => r.author_email));
   return rows.map((r) => ({
     name: r.author_name,
     initials: r.author_initials,
     level: r.author_level,
     postCount: Number(r.post_count),
+    avatarUrl: avatars.get(r.author_email) ?? null,
   }));
 }
 
@@ -224,7 +253,7 @@ export async function createPost(
     .select(POST_BASE)
     .single();
   if (error || !data) return null;
-  const post = mapPost(data as PostRow, new Set());
+  const post = mapPost(data as PostRow, new Set(), author.avatarUrl ?? null);
   post.comments = [];
   return post;
 }
@@ -274,7 +303,7 @@ export async function addComment(
     .select(COMMENT_SELECT)
     .single();
   if (error || !data) return null;
-  return mapComment(data as CommentRow);
+  return mapComment(data as CommentRow, author.avatarUrl ?? null);
 }
 
 export async function deleteComment(id: string): Promise<void> {

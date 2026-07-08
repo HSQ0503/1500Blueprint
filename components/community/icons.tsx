@@ -1,6 +1,6 @@
-// Icons + the shared avatar atom for the community board. Line icons on a
-// 24x24 viewBox to match the rest of the shell; the heart has a filled variant
-// for the liked state.
+// Line icons for the community board on a 24x24 viewBox to match the rest of the
+// shell; the heart has a filled variant for the liked state. The avatar atom
+// lives in ./Avatar (a client component, since it needs image-load fallback).
 
 type IconProps = { className?: string };
 
@@ -103,18 +103,5 @@ export function CommunityIcon({ className }: IconProps) {
       <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9A1.5 1.5 0 0 1 16 5.5v5A1.5 1.5 0 0 1 14.5 12H8l-4 3V5.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
       <path d="M9 15.5a1.5 1.5 0 0 0 1.5 1.5H16l4 3V11a1.5 1.5 0 0 0-1.5-1.5" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
     </svg>
-  );
-}
-
-// The gradient initials avatar used across the shell (leaderboard, account menu).
-export function Avatar({ initials, size = 40 }: { initials: string; size?: number }) {
-  return (
-    <span
-      className="inline-flex flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display font-extrabold text-white"
-      style={{ height: size, width: size, fontSize: Math.round(size * 0.36) }}
-      aria-hidden="true"
-    >
-      {initials}
-    </span>
   );
 }

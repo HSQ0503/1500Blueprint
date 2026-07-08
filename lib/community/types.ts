@@ -18,6 +18,9 @@ export type Author = {
   handle: string;
   initials: string;
   level: number;
+  // Current profile photo, joined from users.avatar_url at read time (not
+  // snapshot on the row) so a student's new pfp shows on their old posts too.
+  avatarUrl?: string | null;
 };
 
 export type PostComment = {
@@ -64,6 +67,7 @@ export type TopMember = {
   initials: string;
   level: number;
   postCount: number;
+  avatarUrl?: string | null;
 };
 
 // Category display config: filter label + the breadcrumb dot color. One place to
