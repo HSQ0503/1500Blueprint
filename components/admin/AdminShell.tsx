@@ -8,13 +8,14 @@ import { Logo } from "@/components/Logo";
 // no client interactivity is required.
 
 export type AdminShellProps = {
-  active: "bank" | "students" | "settings" | "sets" | "community";
+  active: "bank" | "tests" | "students" | "settings" | "sets" | "community";
   email: string;
   children: ReactNode;
 };
 
 const tabs = [
   { key: "bank", label: "Question Bank", href: "/admin" },
+  { key: "tests", label: "Practice Tests", href: "/admin/tests" },
   { key: "sets", label: "Flashcard Sets", href: "/admin/sets" },
   { key: "community", label: "Community", href: "/admin/community" },
   { key: "students", label: "Students", href: "/admin/students" },

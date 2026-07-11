@@ -1,0 +1,52 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { getAdminSession } from "@/lib/auth/requireAdmin";
+import { updateTestSettings, type TestSettingsUpdate } from "@/lib/sat/admin-queries";
+
+// Practice-test settings endpoint. Authorizes with getAdminSession() before the
+// service-role write. Next 16: ctx.params is a Promise.
+type Ctx = { params: Promise<{ slug: string }> };
+
+const forbidden = () => NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+// A finite number in (0, 1], else undefined (leaves the column unchanged).
+function fraction(value: unknown): number | undefined {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 && n <= 1 ? n : undefined;
+}
+
+export async function PUT(req: NextRequest, ctx: Ctx) {
+  if (!(await getAdminSession())) return forbidden();
+  const { slug } = await ctx.params;
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  }
+
+  const patch: TestSettingsUpdate = {};
+  if (typeof body.title === "string" && body.title.trim()) patch.title = body.title.trim();
+
+  const breakMinutes = Number(body.breakMinutes);
+  if (Number.isFinite(breakMinutes) && breakMinutes >= 0 && breakMinutes <= 60) {
+    patch.breakMinutes = Math.round(breakMinutes);
+  }
+
+  const rw = fraction(body.rwThreshold);
+  if (rw !== undefined) patch.rwThreshold = rw;
+  const math = fraction(body.mathThreshold);
+  if (math !== undefined) patch.mathThreshold = math;
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: "no valid fields" }, { status: 400 });
+  }
+
+  try {
+    await updateTestSettings(slug, patch);
+  } catch (e) {
+    console.error("update test settings failed:", e);
+    return NextResponse.json({ error: "save failed" }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}
