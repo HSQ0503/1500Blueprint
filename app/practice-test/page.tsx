@@ -4,6 +4,8 @@ import { AppNav } from "@/components/shell/AppNav";
 import { ChevronRightIcon } from "@/components/shell/icons";
 import { listTests } from "@/lib/sat/loadTest";
 import { getSession } from "@/lib/auth/session";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { PRACTICE_TESTS_LOCKED } from "@/lib/flags";
 import { getNavStats, getTestProgress } from "@/lib/gamification/state";
 
 export const metadata = {
@@ -36,6 +38,56 @@ function HeroStat({ value, label, gold }: { value: string; label: string; gold?:
 export default async function PracticeTestsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  if (PRACTICE_TESTS_LOCKED && !isAdminEmail(session.email)) {
+    const nav = await getNavStats(session.email);
+    return (
+      <div className="min-h-dvh bg-haze text-ink">
+        <AppNav activePage="tests" stats={nav} />
+        <div
+          className="relative overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(110deg,transparent 36%,rgba(124,203,255,0.22) 44%,transparent 52%)," +
+              "linear-gradient(130deg,#07193b 0%,#0b2a5b 42%,#1b46a8 74%,#0b2a5b 100%)",
+          }}
+        >
+          <div className="mx-auto w-full max-w-[980px] px-5 pb-9 pt-[30px] sm:px-6">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky">
+              Bluebook-style digital SAT
+            </div>
+            <div className="mt-3 h-0.5 w-[46px] bg-gold" />
+            <h1 className="mt-3.5 font-display text-[28px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[38px] sm:leading-[1.05]">
+              Full-length practice tests
+            </h1>
+          </div>
+        </div>
+        <main className="mx-auto w-full max-w-[980px] px-6 pb-12 pt-7">
+          <div className="rounded-xl border-[1.5px] border-dashed border-gold/50 bg-gold/[0.06] p-8 text-center">
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold-600">Under construction</div>
+            <h2 className="mt-2 font-display text-[22px] font-extrabold text-navy">
+              Practice tests are getting an upgrade.
+            </h2>
+            <p className="mx-auto mt-2 max-w-[460px] text-[14px] leading-[1.6] text-navy/60">
+              They&apos;re offline while we build the new version. Your past attempts and scores are safe. Meanwhile,
+              keep the streak alive in Drills.
+            </p>
+            <Link
+              href="/drills"
+              className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-navy px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:bg-navy-700"
+            >
+              Go to Drills
+              <ChevronRightIcon className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </main>
+        <footer className="mx-auto w-full max-w-[980px] px-6 pb-10 text-center text-xs text-navy/40">
+          1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
+          Board.
+        </footer>
+      </div>
+    );
+  }
 
   const [tests, nav, progress] = await Promise.all([
     listTests(),
@@ -83,6 +135,11 @@ export default async function PracticeTestsPage() {
       </div>
 
       <main className="mx-auto w-full max-w-[980px] px-6 pb-12 pt-7">
+        {PRACTICE_TESTS_LOCKED && (
+          <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-[13px] font-semibold text-navy/70">
+            Practice tests are locked for students right now — you&apos;re seeing this page as an admin.
+          </div>
+        )}
         <div className="mb-4 flex items-center gap-3">
           <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-navy/55">Choose a test</h2>
           <span className="h-px flex-1 bg-navy/12" />
