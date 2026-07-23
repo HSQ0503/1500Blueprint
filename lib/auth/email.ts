@@ -11,15 +11,33 @@ function resend(): Resend {
   return client;
 }
 
-// Sender on the verified Resend domain (1500satblueprint.com). Defaults here so
-// prod never falls back to the shared resend.dev sender. EMAIL_FROM may be a bare
-// address (gets the default display name) or a full "Name <addr>" value.
-const FROM = process.env.EMAIL_FROM ?? "login@1500satblueprint.com";
-const FROM_HEADER = FROM.includes("<") ? FROM : `1500 SAT Blueprint <${FROM}>`;
+const DEFAULT_FROM_ADDRESS = "login@1500satblueprint.com";
+const VERIFIED_FROM_DOMAIN = "1500satblueprint.com";
+
+// Vercel can preserve an empty or quoted environment value. Normalize it here
+// and refuse to let EMAIL_FROM override the domain verified in Resend.
+function fromHeader(): string {
+  const configured = process.env.EMAIL_FROM?.trim();
+  const raw = stripWrappingQuotes(configured || DEFAULT_FROM_ADDRESS);
+  const bracketed = raw.match(/^(.*?)\s*<([^<>]+)>$/);
+  const address = (bracketed?.[2] ?? raw).trim().toLowerCase();
+  const domain = address.split("@")[1]?.toLowerCase();
+
+  if (!isEmailAddress(address) || domain !== VERIFIED_FROM_DOMAIN) {
+    console.warn(
+      `Ignoring EMAIL_FROM with domain "${domain ?? "missing"}"; ` +
+        `magic links must use ${VERIFIED_FROM_DOMAIN}.`,
+    );
+    return `1500 SAT Blueprint <${DEFAULT_FROM_ADDRESS}>`;
+  }
+
+  const name = bracketed?.[1]?.trim() || "1500 SAT Blueprint";
+  return `${name} <${address}>`;
+}
 
 export async function sendMagicLink(email: string, url: string): Promise<void> {
   const { error } = await resend().emails.send({
-    from: FROM_HEADER,
+    from: fromHeader(),
     to: email,
     subject: "Your 1500 SAT Blueprint login link",
     text:
@@ -27,7 +45,27 @@ export async function sendMagicLink(email: string, url: string): Promise<void> {
       `This link works once and expires in 15 minutes. If you didn't request it, you can ignore this email.`,
     html: render(url),
   });
-  if (error) throw new Error(`failed to send magic link: ${error.message}`);
+  if (error) {
+    throw new Error(
+      `failed to send magic link (${error.name}, ${error.statusCode ?? "unknown status"}): ` +
+        error.message,
+    );
+  }
+}
+
+function stripWrappingQuotes(value: string): string {
+  if (
+    value.length >= 2 &&
+    ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'")))
+  ) {
+    return value.slice(1, -1).trim();
+  }
+  return value;
+}
+
+function isEmailAddress(value: string): boolean {
+  return /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(value);
 }
 
 function render(url: string): string {
