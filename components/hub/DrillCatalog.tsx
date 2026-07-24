@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { drillStats, patternOfTheDay } from "@/lib/gamification";
+import type { GrammarMasteryState } from "@/lib/drills/mastery";
 import { DrillIcon, type DrillIconKey } from "./icons";
 import { PlayIcon } from "@/components/shell/icons";
 
@@ -41,7 +42,18 @@ const startBtn =
   "inline-flex flex-1 items-center justify-center gap-[7px] rounded-[11px] bg-brand px-3 py-3 text-sm font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px";
 const ghostBtn = "rounded-[11px] bg-haze px-4 py-3 text-[13px] font-semibold text-navy transition-colors hover:bg-navy/10";
 
-export function DrillCatalog() {
+export function DrillCatalog({
+  grammarMastery,
+  streak,
+}: {
+  grammarMastery: GrammarMasteryState;
+  streak: number;
+}) {
+  const grammarBarPct =
+    grammarMastery.total > 0
+      ? Math.round((grammarMastery.mastered / grammarMastery.total) * 100)
+      : 0;
+
   return (
     <div className="mx-auto w-full max-w-[1120px] px-6 pb-12 pt-[30px]">
       <div className="mb-[18px] flex flex-wrap items-center justify-between gap-2">
@@ -70,17 +82,20 @@ export function DrillCatalog() {
           <div className="mt-4">
             <div className="mb-[7px] flex items-center justify-between text-[11.5px] font-semibold text-navy/50">
               <span>
-                {drillStats.grammar.mastered} / {drillStats.grammar.totalPatterns} patterns mastered
+                {grammarMastery.mastered} / {grammarMastery.total} patterns mastered
               </span>
               <span className="inline-flex items-center gap-1 text-flag">
                 <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" aria-hidden="true">
                   <path d="M12 3s5 3.5 5 8.5a5 5 0 0 1-10 0c0-1.6.6-2.8 1.3-3.6.2 1.2.9 1.9 1.7 2.1C9.4 7.8 12 6.3 12 3z" fill="#ffbd20" stroke="#f0a900" strokeWidth="1.2" />
                 </svg>
-                {drillStats.grammar.streak} streak
+                {streak} streak
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-navy/[0.09]">
-              <div className="h-full rounded-full bg-brand" style={{ width: `${drillStats.grammar.barPct}%` }} />
+              <div
+                className="h-full rounded-full bg-brand"
+                style={{ width: `${grammarBarPct}%` }}
+              />
             </div>
           </div>
           <div className="mt-auto flex items-center gap-2.5 pt-[18px]">

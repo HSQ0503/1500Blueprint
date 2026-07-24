@@ -84,7 +84,7 @@ export const patternOfTheDay = {
 };
 
 export const drillStats = {
-  grammar: { xpReward: 50, mastered: 9, totalPatterns: 25, streak: 5, barPct: 36 },
+  grammar: { xpReward: 50 },
   reading: { xpReward: 40, level: 1, attempts: 2, barPct: 20 },
   mathMedium: { accuracy: "100%", avg: "27s" },
   mathHard: { accuracy: "33%", avg: "5s" },

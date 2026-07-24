@@ -83,7 +83,10 @@ export async function loadDrillQuestions(drillSlug: DrillSlug): Promise<DrillQue
     .eq("drill_slug", drillSlug)
     .eq("status", "published")
     .order("created_at");
-  if (error || !data) return [];
+  if (error) {
+    throw new Error(`Could not load ${drillSlug} questions [${error.code}]: ${error.message}`);
+  }
+  if (!data) return [];
   // supabase-js infers the nested relation loosely; cast through unknown.
   return (data as unknown as QuestionRow[]).map(toQuestion);
 }

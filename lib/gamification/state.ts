@@ -333,7 +333,7 @@ export async function awardDrill(email: string, result: DrillResult): Promise<Aw
     result.score ?? (result.total ? Math.round(((result.correct ?? 0) / result.total) * 100) : null);
   const amount = drillXpFor(result.drillSlug, quality);
 
-  await db.from("drill_attempts").insert({
+  const { error: attemptError } = await db.from("drill_attempts").insert({
     email,
     drill_slug: result.drillSlug,
     correct: result.correct ?? null,
@@ -341,6 +341,9 @@ export async function awardDrill(email: string, result: DrillResult): Promise<Aw
     score: quality,
     xp_awarded: amount,
   });
+  if (attemptError) {
+    throw new Error(`Could not save drill attempt [${attemptError.code}]: ${attemptError.message}`);
+  }
   await db.from("xp_events").insert({ email, amount, reason: "drill", ref: result.drillSlug });
   await db.rpc("add_xp", { p_email: email, p_amount: amount });
   await creditStreak(email);

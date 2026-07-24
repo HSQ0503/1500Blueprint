@@ -9,6 +9,7 @@ import { OnboardingTour } from "@/components/hub/OnboardingTour";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getHubState, needsOnboarding } from "@/lib/gamification/state";
+import { loadGrammarMastery } from "@/lib/drills/progress";
 
 export const metadata = {
   title: "Practice Drills — 1500 SAT Blueprint",
@@ -20,9 +21,10 @@ export default async function DrillsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [hub, showOnboarding] = await Promise.all([
+  const [hub, showOnboarding, grammarMastery] = await Promise.all([
     getHubState(session.email),
     needsOnboarding(session.email),
+    loadGrammarMastery(session.email),
   ]);
   const nav = {
     streak: hub.player.streak,
@@ -51,7 +53,7 @@ export default async function DrillsPage() {
         <Achievements data={hub.achievements} />
       </div>
 
-      <DrillCatalog />
+      <DrillCatalog grammarMastery={grammarMastery} streak={hub.player.streak} />
 
       {showOnboarding && (
         <OnboardingTour firstName={hub.player.firstName} dailyTarget={hub.dailyGoal.total} />

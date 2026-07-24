@@ -7,6 +7,10 @@
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { Difficulty } from "@/lib/sat/types";
+import {
+  calculateGrammarMastery,
+  type GrammarMasteryState,
+} from "./mastery";
 import type {
   AnswerType,
   DrillContent,
@@ -51,13 +55,22 @@ type DbProgressRow = {
   last_seen_at: string;
 };
 
+function progressDatabaseError(
+  action: string,
+  error: { message: string; code?: string },
+): Error {
+  const code = error.code ? ` [${error.code}]` : "";
+  return new Error(`${action}${code}: ${error.message}`);
+}
+
 async function loadProgressMap(email: string, drillSlug: DrillSlug): Promise<Map<string, ProgressRow>> {
-  const { data } = await supabaseAdmin()
+  const { data, error } = await supabaseAdmin()
     .from("drill_question_progress")
     .select("question_id,attempts,best_score,mastered_at,last_seen_at")
     .eq("email", email)
     .eq("drill_slug", drillSlug)
     .returns<DbProgressRow[]>();
+  if (error) throw progressDatabaseError("Could not load drill progress", error);
 
   const map = new Map<string, ProgressRow>();
   for (const r of data ?? []) {
@@ -70,6 +83,21 @@ async function loadProgressMap(email: string, drillSlug: DrillSlug): Promise<Map
     });
   }
   return map;
+}
+
+// Grammar mastery is rebuilt from the append-only attempt ledger. This makes
+// the count survive navigation and also restores work recorded before the
+// persistent counter was wired into the player.
+export async function loadGrammarMastery(email: string): Promise<GrammarMasteryState> {
+  const { data, error } = await supabaseAdmin()
+    .from("drill_attempts")
+    .select("score,created_at")
+    .eq("email", email)
+    .eq("drill_slug", "grammar")
+    .order("created_at", { ascending: true })
+    .returns<{ score: number | null; created_at: string }[]>();
+  if (error) throw progressDatabaseError("Could not load grammar mastery", error);
+  return calculateGrammarMastery((data ?? []).map((row) => row.score));
 }
 
 // Filter + order a drill's published questions for one student:
@@ -114,19 +142,20 @@ export async function recordProgress(
   const score = typeof input.score === "number" ? input.score : null;
   const mastered = isMastered(input.drillSlug, input);
 
-  const { data: existing } = await db
+  const { data: existing, error: readError } = await db
     .from("drill_question_progress")
     .select("attempts,best_score,mastered_at")
     .eq("email", email)
     .eq("question_id", input.questionId)
     .maybeSingle<{ attempts: number; best_score: number | null; mastered_at: string | null }>();
+  if (readError) throw progressDatabaseError("Could not read drill progress", readError);
 
   const attempts = (existing?.attempts ?? 0) + 1;
   const bestScore =
     score == null ? existing?.best_score ?? null : Math.max(existing?.best_score ?? 0, score);
   const masteredAt = existing?.mastered_at ?? (mastered ? nowIso : null);
 
-  await db.from("drill_question_progress").upsert(
+  const { error: writeError } = await db.from("drill_question_progress").upsert(
     {
       email,
       question_id: input.questionId,
@@ -138,6 +167,7 @@ export async function recordProgress(
     },
     { onConflict: "email,question_id" },
   );
+  if (writeError) throw progressDatabaseError("Could not save drill progress", writeError);
 }
 
 // ---- History --------------------------------------------------------------
@@ -203,17 +233,21 @@ export async function loadHistory(email: string, drillSlug?: DrillSlug): Promise
     .order("last_seen_at", { ascending: false });
   if (drillSlug) query = query.eq("drill_slug", drillSlug);
 
-  const { data: progress } = await query.returns<DbProgressRow[]>();
+  const { data: progress, error: progressError } = await query.returns<DbProgressRow[]>();
+  if (progressError) throw progressDatabaseError("Could not load drill history", progressError);
   const rows = progress ?? [];
   if (rows.length === 0) return [];
 
-  const { data: questions } = await db
+  const { data: questions, error: questionsError } = await db
     .from("drill_questions")
     .select(
       "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_at,updated_at",
     )
     .in("id", rows.map((r) => r.question_id))
     .returns<DbQuestionRow[]>();
+  if (questionsError) {
+    throw progressDatabaseError("Could not load drill history questions", questionsError);
+  }
   const byId = new Map((questions ?? []).map((q) => [q.id, q]));
 
   const out: HistoryEntry[] = [];

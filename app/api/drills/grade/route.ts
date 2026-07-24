@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getSession } from "@/lib/auth/session";
 import { getDrill, getQuestion } from "@/lib/drills/admin-queries";
-import { recordProgress } from "@/lib/drills/progress";
+import { loadGrammarMastery, recordProgress } from "@/lib/drills/progress";
 import { awardDrill, getNavStats } from "@/lib/gamification/state";
 import type { DrillSlug } from "@/lib/drills/types";
 import type {
@@ -181,28 +181,52 @@ export async function POST(req: NextRequest) {
   // Award XP from the model-computed score — server-side, so the client can't
   // inflate it. Non-blocking: a failure here never blocks the grading feedback.
   let gam: { xpAwarded: number; streak: number; level: number; xp: number } | undefined;
+  let attemptSaved = false;
   try {
     const award = await awardDrill(session.email, { drillSlug, score });
     const nav = await getNavStats(session.email);
     gam = { xpAwarded: award.xpAwarded, streak: nav.streak, level: nav.level, xp: nav.xp };
+    attemptSaved = true;
   } catch (e) {
     console.error("drill award failed:", e);
   }
 
   // Track the question as attempted/mastered (score 100 = mastered) so it stops
   // being re-fed and shows up in History. Non-blocking, like the XP award.
+  let questionSaved = false;
   try {
     await recordProgress(session.email, { drillSlug: drillSlug as DrillSlug, questionId, score });
+    questionSaved = true;
   } catch (e) {
     console.error("drill progress failed:", e);
   }
+
+  let grammarMastery: Awaited<ReturnType<typeof loadGrammarMastery>> | undefined;
+  if (drillSlug === "grammar") {
+    try {
+      grammarMastery = await loadGrammarMastery(session.email);
+    } catch (e) {
+      console.error("grammar mastery failed:", e);
+      attemptSaved = false;
+    }
+  }
+
+  const saveStatus = { mastery: attemptSaved, question: questionSaved };
 
   if (drill.aiRole === "grade-process") {
     const feedback = typeof obj.feedback === "string" ? obj.feedback : "";
     const stepsMissed = Array.isArray(obj.stepsMissed)
       ? obj.stepsMissed.filter((s): s is string => typeof s === "string")
       : [];
-    return NextResponse.json({ score, verdict, feedback, stepsMissed, ...(gam ?? {}) });
+    return NextResponse.json({
+      score,
+      verdict,
+      feedback,
+      stepsMissed,
+      grammarMastery,
+      saveStatus,
+      ...(gam ?? {}),
+    });
   }
 
   // grade-summary: normalize to one entry per provided key point, in order.
@@ -221,5 +245,5 @@ export async function POST(req: NextRequest) {
   }
   const captured = keyPoints.map((text) => ({ text, captured: byText.get(norm(text)) ?? false }));
 
-  return NextResponse.json({ score, verdict, captured, ...(gam ?? {}) });
+  return NextResponse.json({ score, verdict, captured, saveStatus, ...(gam ?? {}) });
 }

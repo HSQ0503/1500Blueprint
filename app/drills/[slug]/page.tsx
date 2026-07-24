@@ -7,7 +7,8 @@ import { VocabDrill } from "@/components/drills/vocab/VocabDrill";
 import { FlashcardsDrill } from "@/components/drills/flashcards/FlashcardsDrill";
 import { AiMathDrill } from "@/components/drills/aimath/AiMathDrill";
 import { loadDrillQuestions } from "@/lib/drills/loadDrillContent";
-import { selectForStudent } from "@/lib/drills/progress";
+import { loadGrammarMastery, selectForStudent } from "@/lib/drills/progress";
+import { calculateGrammarMastery } from "@/lib/drills/mastery";
 import { getSession } from "@/lib/auth/session";
 import { getNavStats } from "@/lib/gamification/state";
 import {
@@ -38,11 +39,22 @@ export default async function DrillPage({
   switch (slug) {
     case "grammar": {
       const raw = await loadDrillQuestions("grammar");
-      const ordered = email ? await selectForStudent("grammar", email, raw) : raw;
+      const [ordered, nav, mastery] = email
+        ? await Promise.all([
+            selectForStudent("grammar", email, raw),
+            getNavStats(email),
+            loadGrammarMastery(email),
+          ])
+        : [raw, null, calculateGrammarMastery([])];
       const questions = toGrammarQuestions(ordered);
       if (questions.length === 0) return <DrillEmpty title="Grammar Drill" eyebrow="Reading & Writing" />;
-      const nav = email ? await getNavStats(email) : null;
-      return <GrammarDrill questions={questions} streak={nav?.streak ?? 0} />;
+      return (
+        <GrammarDrill
+          questions={questions}
+          streak={nav?.streak ?? 0}
+          initialMastery={mastery}
+        />
+      );
     }
     case "targeted-math": {
       const difficulty = sp.difficulty === "hard" ? "hard" : "medium";

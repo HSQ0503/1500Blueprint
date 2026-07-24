@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { ChoiceId } from "@/lib/sat/types";
 import type { GrammarQuestion, ProcessFeedback } from "@/lib/drills/types";
-import { grammarMastery, grammarQuestion } from "@/lib/drills/mock";
+import { grammarQuestion } from "@/lib/drills/mock";
+import {
+  GRAMMAR_MASTERY_MIN_SCORE,
+  calculateGrammarMastery,
+  type GrammarMasteryState,
+} from "@/lib/drills/mastery";
 import { DrillShell } from "../shared/DrillShell";
 import { ExplainInput } from "../shared/ExplainInput";
 import { GradingLoader } from "../shared/GradingLoader";
@@ -16,19 +21,25 @@ import { FlameIcon, ZapIcon } from "@/components/shell/icons";
 type Phase = "question" | "grading" | "feedback";
 
 // The grade endpoint returns the AI feedback plus the XP it awarded server-side.
-type GradeResult = ProcessFeedback & { xpAwarded?: number; streak?: number; level?: number; xp?: number };
-
-// Score this or higher twice in a row to master a pattern (100 was too strict).
-const MASTERY_MIN = 75;
+type GradeResult = ProcessFeedback & {
+  xpAwarded?: number;
+  streak?: number;
+  level?: number;
+  xp?: number;
+  grammarMastery?: GrammarMasteryState;
+  saveStatus?: { mastery: boolean; question: boolean };
+};
 
 type MasteryEvent = "progress" | "mastered" | "reset";
 
 export function GrammarDrill({
   questions,
   streak: initialStreak = 0,
+  initialMastery = calculateGrammarMastery([]),
 }: {
   questions?: GrammarQuestion[];
   streak?: number;
+  initialMastery?: GrammarMasteryState;
 }) {
   // Real DB questions when provided, else the single mock so the UI still runs.
   const items = questions?.length ? questions : [grammarQuestion];
@@ -39,14 +50,15 @@ export function GrammarDrill({
   const [feedback, setFeedback] = useState<ProcessFeedback | null>(null);
   const [xpAwarded, setXpAwarded] = useState(0);
   const [streak, setStreak] = useState(initialStreak);
-  const [masteryStreak, setMasteryStreak] = useState(0);
-  const [mastered, setMastered] = useState(grammarMastery.mastered);
+  const [masteryStreak, setMasteryStreak] = useState(initialMastery.streak);
+  const [mastered, setMastered] = useState(initialMastery.mastered);
   const [masteryEvent, setMasteryEvent] = useState<MasteryEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
 
   const toastTimer = useRef<number | undefined>(undefined);
-  const streakTarget = grammarMastery.streakTarget;
+  const streakTarget = initialMastery.streakTarget;
 
   const q = items[index];
   const perfect = (feedback?.stepsMissed.length ?? 0) === 0;
@@ -56,6 +68,7 @@ export function GrammarDrill({
   // then reveal feedback and pop the XP toast.
   async function submit(text: string) {
     setError(null);
+    setSaveWarning(null);
     setPhase("grading");
     try {
       const res = await fetch("/api/drills/grade", {
@@ -74,16 +87,29 @@ export function GrammarDrill({
       setXpAwarded(data.xpAwarded ?? 0);
       if (typeof data.streak === "number") setStreak(data.streak);
 
-      // Mastery streak: a 75+ extends it; two in a row masters the pattern.
-      const passed = (data.score ?? 0) >= MASTERY_MIN;
-      const nextStreak = passed ? masteryStreak + 1 : 0;
-      if (passed && nextStreak >= streakTarget) {
-        setMasteryStreak(0);
-        setMastered((m) => m + 1);
-        setMasteryEvent("mastered");
-      } else {
-        setMasteryStreak(nextStreak);
-        setMasteryEvent(passed ? "progress" : "reset");
+      // The server rebuilds this state from the persisted attempt ledger, so
+      // navigating away and back cannot reset the counter.
+      if (data.grammarMastery) {
+        const nextMastery = data.grammarMastery;
+        if (nextMastery.mastered > mastered) {
+          setMasteryEvent("mastered");
+        } else if (nextMastery.streak > 0) {
+          setMasteryEvent("progress");
+        } else {
+          setMasteryEvent("reset");
+        }
+        setMastered(nextMastery.mastered);
+        setMasteryStreak(nextMastery.streak);
+      }
+
+      if (data.saveStatus?.mastery === false) {
+        setSaveWarning(
+          "Your answer was graded, but mastery could not be saved. Please try this question again before leaving.",
+        );
+      } else if (data.saveStatus?.question === false) {
+        setSaveWarning(
+          "Your mastery was saved, but your place in the question queue was not. Please try again in a moment.",
+        );
       }
 
       setPhase("feedback");
@@ -101,6 +127,7 @@ export function GrammarDrill({
     setShowToast(false);
     setFeedback(null);
     setError(null);
+    setSaveWarning(null);
     setSelected(null);
     setMasteryEvent(null);
     setPhase("question");
@@ -117,7 +144,7 @@ export function GrammarDrill({
         {streak}
       </span>
       <span className="hidden text-sm text-navy/70 sm:inline">
-        {mastered}/{grammarMastery.total} mastered
+        {mastered}/{initialMastery.total} mastered
       </span>
     </div>
   );
@@ -146,7 +173,7 @@ export function GrammarDrill({
               </span>
             </span>
             <span className="hidden text-xs text-navy/45 sm:inline">
-              Score {MASTERY_MIN} or higher twice in a row to master this pattern
+              Score {GRAMMAR_MASTERY_MIN_SCORE} or higher twice in a row to master a pattern
             </span>
           </div>
 
@@ -175,6 +202,14 @@ export function GrammarDrill({
           </div>
 
           <StreakNote event={masteryEvent} streak={masteryStreak} target={streakTarget} />
+          {saveWarning ? (
+            <div
+              role="alert"
+              className="rounded-[10px] border border-danger/30 border-l-[3px] border-l-danger bg-danger-bg px-4 py-3 text-[13px] font-semibold text-danger-600"
+            >
+              {saveWarning}
+            </div>
+          ) : null}
           <AiFeedbackCard text={feedback.feedback} />
           <StepsBox perfect={perfect} steps={feedback.stepsMissed} />
           <CorrectAnswerCard q={q} />
@@ -255,8 +290,8 @@ function StreakNote({
         {event === "mastered"
           ? `Mastery streak ${target}/${target}. Pattern mastered!`
           : event === "progress"
-            ? `Nice, ${streak}/${target} toward mastering this pattern. One more ${MASTERY_MIN}+ to lock it in.`
-            : `Scored below ${MASTERY_MIN}, so your mastery streak reset to 0/${target}. Keep going.`}
+            ? `Nice, ${streak}/${target} toward mastering this pattern. One more ${GRAMMAR_MASTERY_MIN_SCORE}+ to lock it in.`
+            : `Scored below ${GRAMMAR_MASTERY_MIN_SCORE}, so your mastery streak reset to 0/${target}. Keep going.`}
       </span>
     </div>
   );
