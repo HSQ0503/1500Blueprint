@@ -294,6 +294,38 @@ export async function getAdminQuestion(id: string): Promise<AdminQuestion | null
   return q;
 }
 
+// The editor's Next button follows the same stable module/question order as
+// the test outline, including moving from the last question in one module to
+// the first question in the next module.
+export async function getNextAdminQuestionId(testSlug: string, currentId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("tests")
+    .select("modules(section,order,variant,questions(id,position))")
+    .eq("slug", testSlug)
+    .maybeSingle<{
+      modules: {
+        section: string;
+        order: number;
+        variant: string;
+        questions: { id: string; position: number }[];
+      }[];
+    }>();
+
+  if (error || !data) return null;
+
+  const orderedIds = (data.modules ?? [])
+    .slice()
+    .sort((a, b) => moduleRank(a.section, a.order, a.variant) - moduleRank(b.section, b.order, b.variant))
+    .flatMap((module) =>
+      (module.questions ?? [])
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .map((question) => question.id),
+    );
+  const currentIndex = orderedIds.indexOf(currentId);
+  return currentIndex >= 0 ? orderedIds[currentIndex + 1] ?? null : null;
+}
+
 /* --------------------------- Create / update / delete -------------------- */
 
 // Append a blank draft question to a module (position = current max + 1) with

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
-import { getAdminQuestion } from "@/lib/sat/admin-queries";
+import { getAdminQuestion, getNextAdminQuestionId } from "@/lib/sat/admin-queries";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { TestQuestionEditor } from "@/components/admin/TestQuestionEditor";
 
@@ -17,7 +17,10 @@ export default async function AdminTestQuestionPage({
   if (!session) redirect("/drills");
 
   const { slug, id } = await params;
-  const question = await getAdminQuestion(id);
+  const [question, nextQuestionId] = await Promise.all([
+    getAdminQuestion(id),
+    getNextAdminQuestionId(slug, id),
+  ]);
   if (!question || question.context?.testSlug !== slug) notFound();
 
   return (
@@ -31,7 +34,11 @@ export default async function AdminTestQuestionPage({
           {question.context?.testTitle ?? slug}
         </Link>
       </div>
-      <TestQuestionEditor question={question} />
+      <TestQuestionEditor
+        key={question.id}
+        question={question}
+        nextQuestionHref={nextQuestionId ? `/admin/tests/${slug}/questions/${nextQuestionId}` : null}
+      />
     </AdminShell>
   );
 }

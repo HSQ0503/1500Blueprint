@@ -48,7 +48,7 @@ export default async function DrillsPage() {
         dailyGoal={hub.dailyGoal}
       />
 
-      <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 gap-[22px] px-6 pt-[26px] lg:grid-cols-[360px_1fr]">
+      <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-[22px] px-6 pt-[26px] lg:grid-cols-[360px_1fr]">
         <Leaderboard leaderboard={hub.leaderboard} player={hub.player} />
         <Achievements data={hub.achievements} />
       </div>

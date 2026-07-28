@@ -7,6 +7,7 @@ import type { AdminChoice, AdminQuestion, QuestionType } from "@/lib/sat/admin-q
 import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import { label, primaryBtn, secondaryBtn } from "@/components/drills/shared/ui";
+import { ChevronRightIcon } from "@/components/shell/icons";
 
 // Dedicated editor for ONE practice-test question (tests/questions/choices).
 // Separate from the drill CMS's QuestionEditor because the shape differs: fixed
@@ -71,7 +72,13 @@ function toDraft(q: AdminQuestion): Draft {
   };
 }
 
-export function TestQuestionEditor({ question }: { question: AdminQuestion }) {
+export function TestQuestionEditor({
+  question,
+  nextQuestionHref,
+}: {
+  question: AdminQuestion;
+  nextQuestionHref: string | null;
+}) {
   const router = useRouter();
   const backHref = question.context ? `/admin/tests/${question.context.testSlug}` : "/admin/tests";
 
@@ -94,6 +101,11 @@ export function TestQuestionEditor({ question }: { question: AdminQuestion }) {
     }));
     setDirty(true);
     setError(null);
+  }
+
+  function navigateTo(href: string) {
+    if (dirty && !window.confirm("You have unsaved changes. Leave without saving?")) return;
+    router.push(href);
   }
 
   async function onSave() {
@@ -184,12 +196,13 @@ export function TestQuestionEditor({ question }: { question: AdminQuestion }) {
         {dirty ? <span className="text-[12px] font-medium text-gold-600">Unsaved changes</span> : null}
 
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => router.push(backHref)} disabled={busy} className={secondaryBtn}>
+          <button type="button" onClick={() => navigateTo(backHref)} disabled={busy} className={secondaryBtn}>
             Back
           </button>
           <button type="button" onClick={onSave} disabled={busy || !dirty} className={primaryBtn}>
             {saving === "saving" ? "Saving…" : "Save changes"}
           </button>
+          <NextButton href={nextQuestionHref} busy={busy} onNavigate={navigateTo} />
         </div>
       </header>
 
@@ -385,13 +398,37 @@ export function TestQuestionEditor({ question }: { question: AdminQuestion }) {
         >
           {saving === "deleting" ? "Deleting…" : "Delete"}
         </button>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
           <button type="button" onClick={onSave} disabled={busy || !dirty} className={primaryBtn}>
             {saving === "saving" ? "Saving…" : "Save changes"}
           </button>
+          <NextButton href={nextQuestionHref} busy={busy} onNavigate={navigateTo} />
         </div>
       </footer>
     </div>
+  );
+}
+
+function NextButton({
+  href,
+  busy,
+  onNavigate,
+}: {
+  href: string | null;
+  busy: boolean;
+  onNavigate: (href: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => href && onNavigate(href)}
+      disabled={busy || !href}
+      title={href ? "Open the next question" : "This is the last question in the test"}
+      className={`${secondaryBtn} min-h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2`}
+    >
+      Next
+      <ChevronRightIcon className="h-3.5 w-3.5" />
+    </button>
   );
 }
 

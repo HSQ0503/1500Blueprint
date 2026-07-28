@@ -168,11 +168,10 @@ export async function getHubState(email: string): Promise<HubState> {
   rows.sort((a, b) => b.weeklyXp - a.weeklyXp);
   const myIndex = rows.findIndex((r) => r.email === email);
   const rival = myIndex > 0 ? rows[myIndex - 1] : null;
-  const topRows = rows.slice(0, 5);
-  // The current user's avatar is already loaded; fetch the rest in one batch so
-  // the leaderboard shows everyone's photo, not just initials.
-  const lbAvatars = await loadAvatarUrls(topRows.map((r) => r.email));
-  const leaderboard: LeaderRow[] = topRows.map((r, i) => {
+  // Load every ranked participant so the compact five-row card can expand into
+  // the complete weekly board without another client-side request.
+  const lbAvatars = await loadAvatarUrls(rows.map((r) => r.email));
+  const leaderboard: LeaderRow[] = rows.map((r, i) => {
     const you = r.email === email;
     const who = identity(r.email, null);
     return {
