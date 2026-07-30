@@ -17,6 +17,8 @@ import { MathText } from "./MathText";
 import { QuestionContent } from "./QuestionContent";
 import { CheckIcon, CloseIcon } from "./icons";
 
+export type AttemptSaveStatus = "idle" | "saving" | "saved" | "error";
+
 type Props = {
   test: PracticeTest;
   result: TestResult;
@@ -30,6 +32,9 @@ type Props = {
   attemptDate?: string;
   // Taking mode, once the attempt has saved: link to its permanent report.
   savedHref?: string;
+  attemptsHref?: string;
+  saveStatus?: AttemptSaveStatus;
+  onRetrySave?: () => void;
 };
 
 type ReviewItem = { sectionName: string; q: Question };
@@ -61,6 +66,9 @@ export function ResultsScreen({
   backHref,
   attemptDate,
   savedHref,
+  attemptsHref,
+  saveStatus,
+  onRetrySave,
 }: Props) {
   const [showOnlyWrong, setShowOnlyWrong] = useState(false);
 
@@ -117,6 +125,10 @@ export function ResultsScreen({
       </section>
 
       <div className="mx-auto max-w-4xl px-6 py-10">
+        {saveStatus && saveStatus !== "idle" ? (
+          <AttemptSaveNotice status={saveStatus} attemptsHref={attemptsHref} onRetry={onRetrySave} />
+        ) : null}
+
         {/* Domain breakdown */}
         <h2 className="font-display text-xl font-bold text-navy">
           Performance by skill area
@@ -267,6 +279,14 @@ export function ResultsScreen({
               View saved report
             </Link>
           )}
+          {attemptsHref && (
+            <Link
+              href={attemptsHref}
+              className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"
+            >
+              View past attempts
+            </Link>
+          )}
           {backHref && (
             <Link
               href={backHref}
@@ -284,5 +304,58 @@ export function ResultsScreen({
         </div>
       </div>
     </main>
+  );
+}
+
+function AttemptSaveNotice({
+  status,
+  attemptsHref,
+  onRetry,
+}: {
+  status: AttemptSaveStatus;
+  attemptsHref?: string;
+  onRetry?: () => void;
+}) {
+  if (status === "error") {
+    return (
+      <div
+        role="alert"
+        className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+      >
+        <span>This attempt was not saved. Keep this page open and try again.</span>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="min-h-11 cursor-pointer rounded-lg bg-red-700 px-4 font-semibold text-white transition-colors hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2"
+        >
+          Retry save
+        </button>
+      </div>
+    );
+  }
+
+  if (status === "saved") {
+    return (
+      <div
+        role="status"
+        className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+      >
+        <span>Your attempt and detailed answers are saved.</span>
+        {attemptsHref ? (
+          <Link href={attemptsHref} className="font-semibold underline underline-offset-2">
+            View past attempts
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="status"
+      className="mb-6 rounded-xl border border-ice-200 bg-white px-4 py-3 text-sm text-exam-muted"
+    >
+      Saving your attempt…
+    </div>
   );
 }

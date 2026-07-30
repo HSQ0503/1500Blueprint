@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { parseUnderlineMarkup } from "@/lib/sat/formattedText";
 import { TrashIcon, UnderlineIcon, NoteIcon } from "./icons";
 
 export type Highlight = {
@@ -243,12 +244,22 @@ export function HighlightablePassage({
 // at the end of any highlight that carries note text. Marker elements hold no
 // text, so they don't shift selection offsets.
 function renderSegments(
-  text: string,
+  sourceText: string,
   highlights: Highlight[],
   onOpenNote: (h: Highlight, x: number, y: number) => void,
 ) {
+  const formattedSegments = parseUnderlineMarkup(sourceText);
+  const text = formattedSegments.map((segment) => segment.text).join("");
   const len = text.length;
   const colorAt = new Array<string | null>(len).fill(null);
+  const authorUnderlineAt = new Array<boolean>(len).fill(false);
+  let formattedOffset = 0;
+  for (const segment of formattedSegments) {
+    if (segment.underlined) {
+      authorUnderlineAt.fill(true, formattedOffset, formattedOffset + segment.text.length);
+    }
+    formattedOffset += segment.text.length;
+  }
   for (const h of highlights) {
     for (let i = Math.max(0, h.start); i < Math.min(len, h.end); i++) {
       colorAt[i] = h.color;
@@ -265,21 +276,29 @@ function renderSegments(
   const nodes: React.ReactNode[] = [];
   let buf = "";
   let curColor: string | null = null;
+  let curAuthorUnderline = false;
   let key = 0;
 
   const flush = () => {
     if (!buf) return;
-    if (curColor === "underline") {
+    const underlined = curColor === "underline" || curAuthorUnderline;
+    if (curColor && curColor !== "underline") {
       nodes.push(
-        <mark key={key++} className="bg-transparent text-exam-ink underline decoration-2 underline-offset-2">
+        <mark
+          key={key++}
+          style={{ backgroundColor: curColor }}
+          className={`rounded-[2px] text-exam-ink ${
+            underlined ? "underline decoration-2 underline-offset-2" : ""
+          }`}
+        >
           {buf}
         </mark>,
       );
-    } else if (curColor) {
+    } else if (underlined) {
       nodes.push(
-        <mark key={key++} style={{ backgroundColor: curColor }} className="rounded-[2px] text-exam-ink">
+        <span key={key++} className="text-exam-ink underline decoration-2 underline-offset-2">
           {buf}
-        </mark>,
+        </span>,
       );
     } else {
       nodes.push(<span key={key++}>{buf}</span>);
@@ -304,12 +323,15 @@ function renderSegments(
         </button>,
       );
       curColor = null;
+      curAuthorUnderline = false;
     }
     if (i === len) break;
     const c = colorAt[i];
-    if (c !== curColor) {
+    const authorUnderline = authorUnderlineAt[i];
+    if (c !== curColor || authorUnderline !== curAuthorUnderline) {
       flush();
       curColor = c;
+      curAuthorUnderline = authorUnderline;
     }
     buf += text[i];
   }

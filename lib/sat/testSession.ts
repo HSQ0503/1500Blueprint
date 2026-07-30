@@ -34,12 +34,13 @@ export async function saveTestSession(
   if (recent?.completed_at && Date.now() - Date.parse(recent.completed_at) < COMPLETED_GUARD_MS) {
     return;
   }
-  await db
+  const { error } = await db
     .from("test_sessions")
     .upsert(
       { email, test_slug: slug, state: session, updated_at: new Date().toISOString() },
       { onConflict: "email,test_slug" },
     );
+  if (error) throw new Error(`saveTestSession failed: ${error.message}`);
 }
 
 export async function loadTestSession(
@@ -56,9 +57,10 @@ export async function loadTestSession(
 }
 
 export async function clearTestSession(email: string, slug: string): Promise<void> {
-  await supabaseAdmin()
+  const { error } = await supabaseAdmin()
     .from("test_sessions")
     .delete()
     .eq("email", email)
     .eq("test_slug", slug);
+  if (error) throw new Error(`clearTestSession failed: ${error.message}`);
 }

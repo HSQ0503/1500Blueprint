@@ -1,10 +1,10 @@
 import katex from "katex";
 import { Fragment, type ReactNode } from "react";
+import { parseUnderlineMarkup } from "@/lib/sat/formattedText";
 
 // Renders question text with inline LaTeX. Math between $...$ is typeset with
-// KaTeX (print-quality, synchronous); everything else is plain text. Drop-in
-// superset of the previous caret-only renderer: same { children: string } prop
-// and same fast path when there is no math.
+// KaTeX (print-quality, synchronous); safe <u>...</u> pairs render as underlined
+// text, while every other HTML-like string stays plain text.
 //
 // Legacy fallback: some imported practice-test content writes exponents with a
 // bare caret ("a^x", "x^(3/2)") WITHOUT $...$ delimiters. Those plain-text
@@ -29,35 +29,46 @@ function renderExponents(text: string): ReactNode[] {
   return out;
 }
 
-function renderPlain(text: string, key: number): ReactNode {
+function renderPlain(text: string, key: string): ReactNode {
   if (!text.includes("^")) return <Fragment key={key}>{text}</Fragment>;
   return <Fragment key={key}>{renderExponents(text)}</Fragment>;
 }
 
-export function MathText({ children }: { children: string }) {
-  if (!children.includes("$")) return renderPlain(children, 0);
-
+function renderMath(text: string, keyPrefix: string): ReactNode[] {
   // Split on $...$ keeping the delimiters (capturing group). Segments wrapped in
   // $ are math; everything else is plain text. Using split() avoids mutating a
   // shared regex's lastIndex inside render.
-  const segments = children.split(/(\$[^$]+\$)/);
+  if (!text.includes("$")) return [renderPlain(text, `${keyPrefix}-plain`)];
+  const segments = text.split(/(\$[^$]+\$)/);
+  return segments.map((segment, index) => {
+    if (segment.length >= 2 && segment.startsWith("$") && segment.endsWith("$")) {
+      return (
+        <span
+          key={`${keyPrefix}-math-${index}`}
+          // KaTeX output is safe, sanitized HTML. throwOnError:false degrades
+          // a malformed expression to its raw source instead of crashing.
+          dangerouslySetInnerHTML={{
+            __html: katex.renderToString(segment.slice(1, -1), { throwOnError: false }),
+          }}
+        />
+      );
+    }
+    return renderPlain(segment, `${keyPrefix}-plain-${index}`);
+  });
+}
+
+export function MathText({ children }: { children: string }) {
   return (
     <Fragment>
-      {segments.map((seg, i) => {
-        if (seg.length >= 2 && seg.startsWith("$") && seg.endsWith("$")) {
-          return (
-            <span
-              key={`math-${i}`}
-              // KaTeX output is safe, sanitized HTML. throwOnError:false degrades
-              // a malformed expression to its raw source instead of crashing.
-              dangerouslySetInnerHTML={{
-                __html: katex.renderToString(seg.slice(1, -1), { throwOnError: false }),
-              }}
-            />
-          );
-        }
-        return renderPlain(seg, i);
-      })}
+      {parseUnderlineMarkup(children).map((segment, index) =>
+        segment.underlined ? (
+          <u key={`underline-${index}`} className="decoration-[1.5px] underline-offset-2">
+            {renderMath(segment.text, `underline-${index}`)}
+          </u>
+        ) : (
+          <Fragment key={`text-${index}`}>{renderMath(segment.text, `text-${index}`)}</Fragment>
+        ),
+      )}
     </Fragment>
   );
 }

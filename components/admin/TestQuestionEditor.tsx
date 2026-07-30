@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ChoiceId, Difficulty } from "@/lib/sat/types";
 import type { AdminChoice, AdminQuestion, QuestionType } from "@/lib/sat/admin-queries";
 import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
+import { UnderlineIcon } from "@/components/test/icons";
 import { label, primaryBtn, secondaryBtn } from "@/components/drills/shared/ui";
 import { ChevronRightIcon } from "@/components/shell/icons";
 
@@ -290,11 +291,10 @@ export function TestQuestionEditor({
             <h2 className={`${label} mb-4 text-navy/55`}>Question</h2>
             <div className="flex flex-col gap-4">
               <Field labelText="Passage / stimulus (optional)">
-                <textarea
+                <UnderlineTextarea
                   value={draft.passage}
-                  onChange={(e) => patch({ passage: e.target.value })}
+                  onChange={(value) => patch({ passage: value })}
                   rows={5}
-                  className={`${inputClass} resize-y`}
                   placeholder="Reading passage or Math context. Leave blank if none."
                 />
               </Field>
@@ -494,6 +494,70 @@ function Preview({ draft }: { draft: Draft }) {
           <MathText>{draft.explanation}</MathText>
         </p>
       ) : null}
+    </div>
+  );
+}
+
+function UnderlineTextarea({
+  value,
+  onChange,
+  rows,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  rows: number;
+  placeholder: string;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  function underlineSelection() {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const openTag = "<u>";
+    const closeTag = "</u>";
+    const nextValue =
+      value.slice(0, start) +
+      openTag +
+      value.slice(start, end) +
+      closeTag +
+      value.slice(end);
+
+    onChange(nextValue);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + openTag.length, end + openTag.length);
+    });
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[10px] border-[1.5px] border-navy/[0.18] bg-white transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/15">
+      <div className="flex min-h-11 flex-wrap items-center gap-2 border-b border-navy/10 bg-mist/60 px-2 py-1">
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={underlineSelection}
+          className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold text-navy transition-colors hover:bg-navy/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          title="Underline selected text"
+        >
+          <UnderlineIcon className="h-4 w-4" />
+          Underline
+        </button>
+        <span className="text-[11px] text-navy/45">
+          Select text, then click Underline. Safe &lt;u&gt;…&lt;/u&gt; markup also works.
+        </span>
+      </div>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={rows}
+        className="w-full resize-y bg-white px-[13px] py-2.5 text-sm text-ink outline-none placeholder:text-navy/35"
+        placeholder={placeholder}
+      />
     </div>
   );
 }

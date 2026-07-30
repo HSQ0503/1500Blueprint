@@ -27,7 +27,7 @@ import { ReferenceModal } from "./ReferenceModal";
 import { CalculatorPanel } from "./CalculatorPanel";
 import { LineReader } from "./LineReader";
 import { BreakScreen } from "./BreakScreen";
-import { ResultsScreen } from "./ResultsScreen";
+import { ResultsScreen, type AttemptSaveStatus } from "./ResultsScreen";
 import { DevJumpMenu } from "./DevJumpMenu";
 
 const STUDENT_NAME = "Shouqi Han";
@@ -68,6 +68,7 @@ export function TestRunner({
   const [highlights, setHighlights] = useState<Record<string, Highlight[]>>({});
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [savedAttemptId, setSavedAttemptId] = useState<string | null>(null);
+  const [attemptSaveStatus, setAttemptSaveStatus] = useState<AttemptSaveStatus>("idle");
 
   // Latest values for the unload/interval savers, which must not re-bind per change.
   const stateRef = useRef(state);
@@ -183,6 +184,38 @@ export function TestRunner({
   // XP exactly once, then surface a link to its permanent report. The token makes
   // a retried keepalive POST idempotent server-side.
   const completedRef = useRef(false);
+  const completionTokenRef = useRef<string | null>(null);
+
+  const saveCompletedAttempt = useCallback(async () => {
+    const s = stateRef.current;
+    const clientToken = completionTokenRef.current ?? crypto.randomUUID();
+    completionTokenRef.current = clientToken;
+    setAttemptSaveStatus("saving");
+
+    try {
+      const response = await fetch("/api/tests/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          testSlug: slug,
+          answers: s.answers,
+          routed: s.routed,
+          perQuestionTime: s.perQuestionTime,
+          clientToken,
+        }),
+        keepalive: true,
+      });
+      if (!response.ok) throw new Error("Attempt save failed");
+
+      const data = (await response.json()) as { attemptId?: string };
+      if (!data.attemptId) throw new Error("Attempt id missing");
+      setSavedAttemptId(data.attemptId);
+      setAttemptSaveStatus("saved");
+    } catch {
+      setAttemptSaveStatus("error");
+    }
+  }, [slug]);
+
   useEffect(() => {
     if (state.phase !== "results" || !state.completedViaFlow) {
       completedRef.current = false;
@@ -190,26 +223,8 @@ export function TestRunner({
     }
     if (completedRef.current) return;
     completedRef.current = true;
-    const s = stateRef.current;
-    const clientToken = crypto.randomUUID();
-    void fetch("/api/tests/complete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        testSlug: slug,
-        answers: s.answers,
-        routed: s.routed,
-        perQuestionTime: s.perQuestionTime,
-        clientToken,
-      }),
-      keepalive: true,
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { attemptId?: string } | null) => {
-        if (d?.attemptId) setSavedAttemptId(d.attemptId);
-      })
-      .catch(() => {});
-  }, [state.phase, state.completedViaFlow, slug]);
+    void saveCompletedAttempt();
+  }, [saveCompletedAttempt, state.phase, state.completedViaFlow]);
 
   // Describe a resumable saved session for the intro's "Resume" card.
   const resumeInfo = useMemo<ResumeInfo | null>(() => {
@@ -304,9 +319,14 @@ export function TestRunner({
           perQuestionTime={state.perQuestionTime}
           onRestart={() => {
             setSavedAttemptId(null);
+            setAttemptSaveStatus("idle");
+            completionTokenRef.current = null;
             dispatch({ type: "RESTART" });
           }}
+          saveStatus={state.completedViaFlow ? attemptSaveStatus : undefined}
+          onRetrySave={saveCompletedAttempt}
           savedHref={savedAttemptId ? `/practice-test/${slug}/results/${savedAttemptId}` : undefined}
+          attemptsHref={`/practice-test/${slug}/attempts`}
         />
       </>
     );
