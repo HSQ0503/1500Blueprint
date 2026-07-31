@@ -22,7 +22,7 @@ const ORDERS: ReadonlyArray<readonly [1 | 2, ModuleVariant | undefined]> = [
   [2, "hard"],
 ];
 
-function moduleKey(sectionId: SectionId, order: 1 | 2, variant?: ModuleVariant): string {
+export function moduleKey(sectionId: SectionId, order: 1 | 2, variant?: ModuleVariant): string {
   return order === 1 ? `${sectionId}-1` : `${sectionId}-2-${variant}`;
 }
 

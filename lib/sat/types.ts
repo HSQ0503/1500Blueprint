@@ -23,6 +23,8 @@ export type Choice = { id: ChoiceId; text: string };
 type BaseQuestion = {
   id: string;
   domain: Domain;
+  /** More granular SAT skill/topic, when supplied by the source form. */
+  skill?: string;
   difficulty: Difficulty;
   /** R&W passage / stimulus (left pane), or a Math context line. Optional. */
   passage?: string;

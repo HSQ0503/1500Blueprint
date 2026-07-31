@@ -123,12 +123,21 @@ export default async function PracticeTestsPage() {
             score report when you finish.
           </p>
           {progress.testsDone > 0 && (
-            <div className="mt-[18px] inline-flex gap-[18px] rounded-xl border border-white/15 bg-white/[0.08] px-5 py-[13px]">
-              <HeroStat value={bestScore} label="Best score" />
-              <div className="w-px bg-white/[0.18]" />
-              <HeroStat value={String(progress.testsDone)} label="Tests done" />
-              <div className="w-px bg-white/[0.18]" />
-              <HeroStat value={sinceFirst} label="Since test 1" gold />
+            <div className="mt-[18px] flex flex-wrap items-center gap-3">
+              <div className="inline-flex gap-[18px] rounded-xl border border-white/15 bg-white/[0.08] px-5 py-[13px]">
+                <HeroStat value={bestScore} label="Best score" />
+                <div className="w-px bg-white/[0.18]" />
+                <HeroStat value={String(progress.testsDone)} label="Tests done" />
+                <div className="w-px bg-white/[0.18]" />
+                <HeroStat value={sinceFirst} label="Since test 1" gold />
+              </div>
+              <Link
+                href="/practice-test/completed"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-white/25 bg-white px-4 text-[13px] font-bold text-navy transition-colors hover:bg-blue-50"
+              >
+                View completed tests
+                <ChevronRightIcon className="h-3.5 w-3.5" />
+              </Link>
             </div>
           )}
         </div>

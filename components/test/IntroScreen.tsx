@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { PracticeTest } from "@/lib/sat/types";
 import { Logo } from "@/components/Logo";
+import { CloseIcon } from "./icons";
 
 export type ResumeInfo = { sectionLabel: string; timeLabel: string | null };
 
@@ -11,13 +13,63 @@ export function IntroScreen({
   resume,
   onResume,
   onStartOver,
+  extendedTime,
+  onExtendedTimeChange,
 }: {
   test: PracticeTest;
   onStart: () => void;
   resume?: ResumeInfo | null;
   onResume?: () => void;
   onStartOver?: () => void;
+  extendedTime: boolean;
+  onExtendedTimeChange: (enabled: boolean) => void;
 }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [draftExtendedTime, setDraftExtendedTime] = useState(extendedTime);
+  const settingsDialogRef = useRef<HTMLElement>(null);
+  const settingsCloseRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    settingsCloseRef.current?.focus();
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSettingsOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !settingsDialogRef.current) return;
+      const focusable = [...settingsDialogRef.current.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex='-1'])",
+      )];
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [settingsOpen]);
+
+  function openSettings() {
+    setDraftExtendedTime(extendedTime);
+    setSettingsOpen(true);
+  }
+
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-exam-bg px-6 py-12">
       <div className="w-full max-w-md text-center">
@@ -29,6 +81,18 @@ export function IntroScreen({
           This is a full-length, Bluebook-style practice test. Work in a quiet
           place. Once you start a module, the timer runs continuously.
         </p>
+
+        {!resume && (
+          <button
+            type="button"
+            onClick={openSettings}
+            className="mt-5 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-exam-blue/30 bg-exam-tint px-4 text-sm font-semibold text-exam-blue transition-colors hover:bg-blue-100"
+          >
+            <SettingsIcon className="h-4 w-4" />
+            Test settings
+            {extendedTime ? <span className="rounded-full bg-exam-blue px-2 py-0.5 text-[11px] text-white">1.5x</span> : null}
+          </button>
+        )}
 
         {resume && (
           <div className="mt-6 rounded-xl border border-exam-blue/30 bg-exam-tint px-4 py-4 text-left">
@@ -68,7 +132,7 @@ export function IntroScreen({
                 Section {i + 1}: {s.name}
               </dt>
               <dd className="text-sm text-exam-muted">
-                2 modules · {s.minutesPerModule} min each
+                2 modules · {Math.round(s.minutesPerModule * (extendedTime ? 1.5 : 1))} min each
               </dd>
             </div>
           ))}
@@ -78,6 +142,12 @@ export function IntroScreen({
               {test.breakMinutes} min between sections
             </dd>
           </div>
+          {extendedTime ? (
+            <div className="flex items-center justify-between rounded-xl border border-exam-blue/25 bg-exam-tint px-4 py-3">
+              <dt className="text-sm font-semibold text-exam-ink">Module breaks</dt>
+              <dd className="text-sm text-exam-muted">5 min between modules</dd>
+            </div>
+          ) : null}
         </dl>
 
         {!resume && (
@@ -94,6 +164,90 @@ export function IntroScreen({
           first module, just like the real digital SAT.
         </p>
       </div>
+
+      {settingsOpen ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSettingsOpen(false);
+          }}
+        >
+          <section
+            ref={settingsDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="test-settings-title"
+            className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <header className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+              <h2 id="test-settings-title" className="font-display text-2xl font-extrabold text-ink">
+                Test Settings
+              </h2>
+              <button
+                ref={settingsCloseRef}
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                aria-label="Close test settings"
+                className="grid h-11 w-11 cursor-pointer place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink"
+              >
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            </header>
+
+            <div className="px-6 py-6 text-left">
+              <h3 className="text-base font-bold text-ink">Test Accommodations</h3>
+              <label className="mt-4 flex cursor-pointer gap-4 rounded-xl border border-slate-200 bg-slate-50 p-5 transition-colors hover:border-exam-blue/40">
+                <input
+                  type="checkbox"
+                  checked={draftExtendedTime}
+                  onChange={(event) => setDraftExtendedTime(event.target.checked)}
+                  className="mt-0.5 h-6 w-6 shrink-0 accent-exam-blue"
+                />
+                <span>
+                  <span className="block text-base font-bold text-ink">Enable Extended Time (1.5x)</span>
+                  <span className="mt-1 block text-sm leading-6 text-slate-600">When enabled, you will receive:</span>
+                  <span className="mt-1 block text-sm leading-6 text-slate-600">
+                    • 1.5x time on all test modules<br />
+                    • A 5-minute break between Reading &amp; Writing modules<br />
+                    • The standard {test.breakMinutes}-minute break between sections<br />
+                    • A 5-minute break between Math modules
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <footer className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="min-h-11 cursor-pointer rounded-lg px-5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onExtendedTimeChange(draftExtendedTime);
+                  setSettingsOpen(false);
+                }}
+                className="min-h-11 cursor-pointer rounded-lg bg-exam-blue px-6 text-sm font-bold text-white transition-colors hover:bg-exam-blue-600"
+              >
+                Save Settings
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </main>
+  );
+}
+
+function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M12 8.2a3.8 3.8 0 100 7.6 3.8 3.8 0 000-7.6z" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M19 13.3v-2.6l-2-.7a7.2 7.2 0 00-.7-1.6l.9-1.9-1.8-1.8-1.9.9a7.2 7.2 0 00-1.6-.7l-.7-2H8.7l-.7 2a7.2 7.2 0 00-1.6.7l-1.9-.9-1.8 1.8.9 1.9a7.2 7.2 0 00-.7 1.6l-2 .7v2.6l2 .7c.2.6.4 1.1.7 1.6l-.9 1.9 1.8 1.8 1.9-.9c.5.3 1 .5 1.6.7l.7 2h2.6l.7-2c.6-.2 1.1-.4 1.6-.7l1.9.9 1.8-1.8-.9-1.9c.3-.5.5-1 .7-1.6l1.9-.7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
   );
 }

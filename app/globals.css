@@ -31,7 +31,7 @@
   /* Bluebook-faithful exam tokens */
   --color-exam-bg: #ffffff;
   --color-exam-chrome: #e8edf5;
-  --color-exam-banner: #232c63;
+  --color-exam-banner: #3159b8;
   --color-exam-ink: #1d1d1f;
   --color-exam-muted: #5c5c60;
   --color-exam-line: #aab0bb;
@@ -89,12 +89,12 @@ body {
 
 /* Bluebook perforated dashed separator (header / footer / question strip). */
 .bb-perf {
-  height: 3px;
+  height: 2px;
   width: 100%;
   background-image: repeating-linear-gradient(
     to right,
-    #000 0 18px,
-    transparent 18px 28px
+    #8793a6 0 8px,
+    transparent 8px 13px
   );
 }
 

@@ -42,7 +42,12 @@ function sanitizeResumeState(s: TestState, test: PracticeTest): TestState | null
   const mod = s.moduleOrder === 1 ? section.module1 : section.module2[variant];
   if (!mod || mod.questions.length === 0) return null;
   const qIndex = Math.min(Math.max(0, s.qIndex), mod.questions.length - 1);
-  return { ...s, qIndex };
+  return {
+    ...s,
+    qIndex,
+    extendedTime: Boolean(s.extendedTime),
+    breakTarget: s.breakTarget === "module2" ? "module2" : s.phase === "break" ? "nextSection" : undefined,
+  };
 }
 
 export function TestRunner({
@@ -69,6 +74,7 @@ export function TestRunner({
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [savedAttemptId, setSavedAttemptId] = useState<string | null>(null);
   const [attemptSaveStatus, setAttemptSaveStatus] = useState<AttemptSaveStatus>("idle");
+  const [extendedTime, setExtendedTime] = useState(false);
 
   // Latest values for the unload/interval savers, which must not re-bind per change.
   const stateRef = useRef(state);
@@ -114,7 +120,7 @@ export function TestRunner({
   }, [slug, test]);
 
   useEffect(() => {
-    if (state.phase !== "module" && state.phase !== "break") return;
+    if (state.phase !== "module" && state.phase !== "review" && state.phase !== "break") return;
     const id = setInterval(() => dispatch({ type: "TICK" }), 1000);
     return () => clearInterval(id);
   }, [state.phase]);
@@ -147,10 +153,10 @@ export function TestRunner({
     highlights,
   ]);
 
-  // Periodic save while a module/break timer runs, so the remaining time is
+  // Periodic save while a module/review/break timer runs, so the remaining time is
   // captured even if the student leaves without interacting.
   useEffect(() => {
-    if (state.phase !== "module" && state.phase !== "break") return;
+    if (state.phase !== "module" && state.phase !== "review" && state.phase !== "break") return;
     const id = setInterval(persist, 15000);
     return () => clearInterval(id);
   }, [persist, state.phase]);
@@ -236,12 +242,13 @@ export function TestRunner({
       ph === "break"
         ? "your break before the next section"
         : `Section ${safeResume.sectionIndex + 1}, Module ${safeResume.moduleOrder} (${sec?.name ?? ""})`;
-    const timeLabel = ph === "module" || ph === "break" ? formatTime(safeResume.timeLeft) : null;
+    const timeLabel = ph === "module" || ph === "review" || ph === "break" ? formatTime(safeResume.timeLeft) : null;
     return { sectionLabel, timeLabel };
   }, [safeResume, test]);
 
   function handleResume() {
     if (!safeResume) return;
+    setExtendedTime(Boolean(safeResume.extendedTime));
     setHighlights(resumeState?.highlights ?? {});
     dispatch({ type: "RESUME", state: safeResume });
   }
@@ -286,10 +293,12 @@ export function TestRunner({
         {devMenu}
         <IntroScreen
           test={test}
-          onStart={() => dispatch({ type: "START" })}
+          onStart={() => dispatch({ type: "START", extendedTime })}
           resume={showResume}
           onResume={handleResume}
           onStartOver={handleStartOver}
+          extendedTime={extendedTime}
+          onExtendedTimeChange={setExtendedTime}
         />
       </>
     );
@@ -302,6 +311,7 @@ export function TestRunner({
       <BreakScreen
         timeLeft={state.timeLeft}
         studentName={STUDENT_NAME}
+        betweenModules={state.breakTarget === "module2"}
         onResume={() => dispatch({ type: "END_BREAK" })}
       />
     );

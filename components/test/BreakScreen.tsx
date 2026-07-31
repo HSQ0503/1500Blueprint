@@ -14,10 +14,12 @@ export function BreakScreen({
   timeLeft,
   onResume,
   studentName,
+  betweenModules = false,
 }: {
   timeLeft: number;
   onResume: () => void;
   studentName: string;
+  betweenModules?: boolean;
 }) {
   return (
     <main className="relative flex min-h-dvh flex-col bg-[#1c1c1e] font-exam-sans text-white">
@@ -47,8 +49,8 @@ export function BreakScreen({
           <div className="my-5 border-t border-white/20" />
           <h2 className="text-xl font-bold">Take a Break: Do Not Close Your Device</h2>
           <p className="mt-2 text-[14px] leading-6 text-white/80">
-            After the break, a <strong>Resume Testing Now</strong> button will
-            appear and you&rsquo;ll start the next section.
+            After the break, select <strong>Resume Testing</strong> to start the
+            {betweenModules ? " next module" : " next section"}.
           </p>
           <p className="mt-4 text-[14px] font-bold">Follow these rules during the break:</p>
           <ol className="mt-2 space-y-2 text-[14px] leading-6 text-white/80">

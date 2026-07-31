@@ -63,19 +63,21 @@ export function ModuleRunner({
   }, [qIndex]);
   const completedRef = useRef(false);
 
-  // Countdown while answering; time-up sends the student to the review page.
+  // Review is part of the timed module; reaching zero submits it immediately.
   useEffect(() => {
-    if (phase !== "module") return;
+    if (phase !== "module" && phase !== "review") return;
     const id = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
-          setPhase("review");
+          setPhase("results");
           return 0;
         }
         return t - 1;
       });
-      const q = module.questions[qIndexRef.current];
-      if (q) setPerQuestionTime((p) => ({ ...p, [q.id]: (p[q.id] ?? 0) + 1 }));
+      if (phase === "module") {
+        const q = module.questions[qIndexRef.current];
+        if (q) setPerQuestionTime((p) => ({ ...p, [q.id]: (p[q.id] ?? 0) + 1 }));
+      }
     }, 1000);
     return () => clearInterval(id);
   }, [phase, module]);

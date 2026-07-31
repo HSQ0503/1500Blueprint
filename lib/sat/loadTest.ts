@@ -25,6 +25,7 @@ type QuestionRow = {
   position: number;
   type: "mc" | "grid";
   domain: string | null;
+  skill: string | null;
   difficulty: string | null;
   passage: string | null;
   prompt: string;
@@ -60,6 +61,7 @@ function buildQuestion(q: QuestionRow): Question {
   const base = {
     id: q.id,
     domain: (q.domain ?? "") as Domain,
+    skill: q.skill ?? undefined,
     difficulty: (q.difficulty ?? "medium") as Difficulty,
     passage: q.passage ?? undefined,
     figureUrl: q.figure_url ?? undefined,
@@ -97,7 +99,7 @@ export async function loadTest(slug: string): Promise<PracticeTest | null> {
     .select(
       "id,title,break_minutes,rw_threshold,math_threshold," +
         "modules(id,section,order,variant,minutes_per_module," +
-        "questions(id,position,type,domain,difficulty,passage,prompt,figure_url,correct,accepted_answers,explanation," +
+        "questions(id,position,type,domain,skill,difficulty,passage,prompt,figure_url,correct,accepted_answers,explanation," +
         "choices(letter,text,explanation)))",
     )
     .eq("slug", slug)

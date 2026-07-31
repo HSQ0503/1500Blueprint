@@ -500,6 +500,39 @@ export async function listTestAttempts(
   }));
 }
 
+export type CompletedTestAttempt = TestAttemptSummary & {
+  testSlug: string;
+};
+
+// Every completed full-length test for the student, oldest first so score
+// changes and the trend line use the student's actual testing sequence.
+export async function listAllTestAttempts(email: string): Promise<CompletedTestAttempt[]> {
+  const { data } = await supabaseAdmin()
+    .from("test_attempts")
+    .select("id,test_slug,total_score,rw_score,math_score,created_at,completed_at")
+    .eq("email", email)
+    .order("created_at", { ascending: true })
+    .returns<
+      {
+        id: string;
+        test_slug: string;
+        total_score: number | null;
+        rw_score: number | null;
+        math_score: number | null;
+        created_at: string;
+        completed_at: string | null;
+      }[]
+    >();
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    testSlug: row.test_slug,
+    totalScore: row.total_score,
+    rwScore: row.rw_score,
+    mathScore: row.math_score,
+    createdAt: row.completed_at ?? row.created_at,
+  }));
+}
+
 export type StoredTestAttempt = {
   id: string;
   testSlug: string;

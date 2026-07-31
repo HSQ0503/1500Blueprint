@@ -22,6 +22,8 @@ export type Phase =
   | "break"
   | "results";
 
+export type BreakTarget = "module2" | "nextSection";
+
 export type TestState = {
   phase: Phase;
   sectionIndex: number;
@@ -35,13 +37,15 @@ export type TestState = {
   timeLeft: number;
   timerHidden: boolean;
   perQuestionTime: Record<string, number>;
+  extendedTime: boolean;
+  breakTarget?: BreakTarget;
   // Set only when the student reaches results by finishing the test (not via the
   // dev jump), so the runner saves + awards exactly one genuine attempt.
   completedViaFlow?: boolean;
 };
 
 export type TestAction =
-  | { type: "START" }
+  | { type: "START"; extendedTime?: boolean }
   | { type: "TICK" }
   | { type: "SELECT"; questionId: string; value: AnswerValue }
   | { type: "TOGGLE_MARK"; questionId: string }
@@ -74,6 +78,7 @@ export function initialState(): TestState {
     timeLeft: 0,
     timerHidden: false,
     perQuestionTime: {},
+    extendedTime: false,
   };
 }
 
@@ -100,7 +105,8 @@ export function makeReducer(test: PracticeTest) {
       moduleOrder: 1,
       qIndex: 0,
       eliminatorOn: false,
-      timeLeft: section.minutesPerModule * 60,
+      timeLeft: Math.round(section.minutesPerModule * 60 * (state.extendedTime ? 1.5 : 1)),
+      breakTarget: undefined,
       phase: "module",
     };
   }
@@ -109,6 +115,18 @@ export function makeReducer(test: PracticeTest) {
     const section = test.sections[state.sectionIndex];
     if (state.moduleOrder === 1) {
       const variant = routeVariant(test, section, state.answers);
+      if (state.extendedTime) {
+        return {
+          ...state,
+          routed: { ...state.routed, [section.id]: variant },
+          moduleOrder: 2,
+          qIndex: 0,
+          eliminatorOn: false,
+          timeLeft: 5 * 60,
+          phase: "break",
+          breakTarget: "module2",
+        };
+      }
       return {
         ...state,
         routed: { ...state.routed, [section.id]: variant },
@@ -116,30 +134,54 @@ export function makeReducer(test: PracticeTest) {
         qIndex: 0,
         eliminatorOn: false,
         timeLeft: section.minutesPerModule * 60,
+        breakTarget: undefined,
         phase: "module",
       };
     }
     if (state.sectionIndex < test.sections.length - 1) {
-      return { ...state, phase: "break", timeLeft: test.breakMinutes * 60 };
+      return {
+        ...state,
+        phase: "break",
+        timeLeft: test.breakMinutes * 60,
+        breakTarget: "nextSection",
+      };
     }
     return { ...state, phase: "results", completedViaFlow: true };
+  }
+
+  function endBreak(state: TestState): TestState {
+    if (state.breakTarget === "module2") {
+      const section = test.sections[state.sectionIndex];
+      return {
+        ...state,
+        phase: "module",
+        qIndex: 0,
+        timeLeft: Math.round(section.minutesPerModule * 60 * 1.5),
+        breakTarget: undefined,
+      };
+    }
+    return startSection(state, state.sectionIndex + 1);
   }
 
   return function reducer(state: TestState, action: TestAction): TestState {
     switch (action.type) {
       case "START":
-        return startSection(initialState(), 0);
+        return startSection({ ...initialState(), extendedTime: Boolean(action.extendedTime) }, 0);
       case "TICK": {
         if (state.phase === "module") {
-          if (state.timeLeft <= 1) return { ...state, timeLeft: 0, phase: "review" };
+          if (state.timeLeft <= 1) return { ...state, timeLeft: 0, phase: "moduleOver" };
           const q = currentQuestion(test, state);
           const perQuestionTime = q
             ? { ...state.perQuestionTime, [q.id]: (state.perQuestionTime[q.id] ?? 0) + 1 }
             : state.perQuestionTime;
           return { ...state, timeLeft: state.timeLeft - 1, perQuestionTime };
         }
+        if (state.phase === "review") {
+          if (state.timeLeft <= 1) return { ...state, timeLeft: 0, phase: "moduleOver" };
+          return { ...state, timeLeft: state.timeLeft - 1 };
+        }
         if (state.phase === "break") {
-          if (state.timeLeft <= 1) return startSection(state, state.sectionIndex + 1);
+          if (state.timeLeft <= 1) return endBreak(state);
           return { ...state, timeLeft: state.timeLeft - 1 };
         }
         return state;
@@ -176,7 +218,7 @@ export function makeReducer(test: PracticeTest) {
       case "ADVANCE":
         return submitModule(state);
       case "END_BREAK":
-        return startSection(state, state.sectionIndex + 1);
+        return endBreak(state);
       case "TOGGLE_TIMER":
         return { ...state, timerHidden: !state.timerHidden };
       case "RESTART":
@@ -197,7 +239,8 @@ export function makeReducer(test: PracticeTest) {
           routed,
           qIndex: 0,
           eliminatorOn: false,
-          timeLeft: section.minutesPerModule * 60,
+          timeLeft: Math.round(section.minutesPerModule * 60 * (state.extendedTime ? 1.5 : 1)),
+          breakTarget: undefined,
         };
       }
       case "DEV_RESULTS":
