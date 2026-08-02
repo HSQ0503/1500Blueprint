@@ -31,6 +31,10 @@ type GradeResponse = {
   xpAwarded?: number;
 };
 
+type GradeError = {
+  code?: string;
+};
+
 // Fallback when the page passes no DB passages: reuse the single mock passage.
 // `id` is empty so a misconfigured run can't masquerade as a real question.
 const MOCK_ITEM: ReadingItem = {
@@ -51,6 +55,7 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
   const [summary, setSummary] = useState("");
   const [result, setResult] = useState<GradeResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [quotaReached, setQuotaReached] = useState(false);
 
   const lowTime = secondsLeft <= 20;
 
@@ -75,13 +80,25 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
     }
     setPhase("grading");
     setErrorMsg("");
+    setQuotaReached(false);
     try {
       const res = await fetch("/api/drills/grade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ drillSlug: "reading", questionId: item.id, studentText: text }),
       });
-      if (!res.ok) throw new Error(`Grading failed (${res.status})`);
+      if (!res.ok) {
+        const failure = (await res.json().catch(() => ({}))) as GradeError;
+        if (failure.code === "monthly_ai_limit") {
+          setErrorMsg(
+            "You've reached your 500 AI submissions for this month. Your limit resets on the first of next month.",
+          );
+          setQuotaReached(true);
+          setPhase("error");
+          return;
+        }
+        throw new Error(`Grading failed (${res.status})`);
+      }
       const data = (await res.json()) as GradeResponse;
       setResult(data);
       setPhase("feedback");
@@ -102,6 +119,7 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
     setSummary("");
     setResult(null);
     setErrorMsg("");
+    setQuotaReached(false);
     setSecondsLeft(items[(index + 1) % items.length].readSeconds);
     setPhase("read");
   }
@@ -190,9 +208,11 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
             <p className="font-display text-base font-bold text-danger-600">Grading failed</p>
             <p className="mt-1 text-sm text-navy/60">{errorMsg}</p>
             <div className="mt-4 flex flex-wrap justify-center gap-3">
-              <button type="button" onClick={retry} className={primaryBtn}>
-                Try again
-              </button>
+              {!quotaReached ? (
+                <button type="button" onClick={retry} className={primaryBtn}>
+                  Try again
+                </button>
+              ) : null}
               <Link href="/drills" className={secondaryBtn}>
                 Back to drills
               </Link>

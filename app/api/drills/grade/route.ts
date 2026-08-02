@@ -8,6 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getSession } from "@/lib/auth/session";
 import { getDrill, getQuestion } from "@/lib/drills/admin-queries";
+import { refundAiSubmission, reserveAiSubmission } from "@/lib/drills/aiQuota";
 import { loadGrammarMastery, recordProgress } from "@/lib/drills/progress";
 import { awardDrill, getNavStats } from "@/lib/gamification/state";
 import type { DrillSlug } from "@/lib/drills/types";
@@ -47,6 +48,23 @@ function collectText(content: Anthropic.Messages.ContentBlock[]): string {
   let text = "";
   for (const block of content) if (block.type === "text") text += block.text;
   return text;
+}
+
+function gradingFailure(error: unknown) {
+  if (error instanceof Anthropic.APIError) {
+    return {
+      name: error.name,
+      status: error.status,
+      type: error.type,
+      requestId: error.requestID,
+    };
+  }
+  return {
+    name: error instanceof Error ? error.name : "UnknownError",
+    status: null,
+    type: null,
+    requestId: null,
+  };
 }
 
 // ProcessFeedback shape for the Grammar drill (grade-process).
@@ -155,6 +173,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let quota: Awaited<ReturnType<typeof reserveAiSubmission>>;
+  try {
+    quota = await reserveAiSubmission(session.email);
+  } catch (error) {
+    console.error("AI submission quota check failed", {
+      name: error instanceof Error ? error.name : "UnknownError",
+    });
+    return NextResponse.json(
+      { error: "Grading quota is unavailable", code: "quota_unavailable" },
+      { status: 503 },
+    );
+  }
+
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error: "Monthly AI submission limit reached",
+        code: "monthly_ai_limit",
+        limit: quota.limit,
+        used: quota.used,
+        resetsAt: quota.resetsAt,
+      },
+      { status: 429 },
+    );
+  }
+
   const anthropic = new Anthropic({ apiKey });
   let raw: string;
   try {
@@ -165,12 +209,29 @@ export async function POST(req: NextRequest) {
       messages: [{ role: "user", content: userPrompt }],
     });
     raw = collectText(resp.content);
-  } catch {
+  } catch (error) {
+    // Keep prompts and student work out of logs while preserving the vendor
+    // status/type/request ID needed to distinguish auth, quota, and model errors.
+    console.error("Drill grading request failed", {
+      model: MODEL,
+      ...gradingFailure(error),
+    });
+    try {
+      await refundAiSubmission(session.email);
+    } catch (refundError) {
+      console.error("AI submission quota refund failed", {
+        name: refundError instanceof Error ? refundError.name : "UnknownError",
+      });
+    }
     return NextResponse.json({ error: "Grading request failed" }, { status: 502 });
   }
 
   const parsed = extractJson(raw);
   if (!parsed || typeof parsed !== "object") {
+    console.error("Drill grading response was not valid JSON", {
+      model: MODEL,
+      responseLength: raw.length,
+    });
     return NextResponse.json({ error: "Could not parse grading response" }, { status: 502 });
   }
 
@@ -225,6 +286,7 @@ export async function POST(req: NextRequest) {
       stepsMissed,
       grammarMastery,
       saveStatus,
+      aiUsage: quota,
       ...(gam ?? {}),
     });
   }
@@ -245,5 +307,5 @@ export async function POST(req: NextRequest) {
   }
   const captured = keyPoints.map((text) => ({ text, captured: byText.get(norm(text)) ?? false }));
 
-  return NextResponse.json({ score, verdict, captured, saveStatus, ...(gam ?? {}) });
+  return NextResponse.json({ score, verdict, captured, saveStatus, aiUsage: quota, ...(gam ?? {}) });
 }

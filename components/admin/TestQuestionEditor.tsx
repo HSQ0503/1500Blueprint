@@ -9,6 +9,7 @@ import { QuestionContent } from "@/components/test/QuestionContent";
 import { UnderlineIcon } from "@/components/test/icons";
 import { label, primaryBtn, secondaryBtn } from "@/components/drills/shared/ui";
 import { ChevronRightIcon } from "@/components/shell/icons";
+import { FigureUploadField } from "@/components/admin/editor/FigureUploadField";
 
 // Dedicated editor for ONE practice-test question (tests/questions/choices).
 // Separate from the drill CMS's QuestionEditor because the shape differs: fixed
@@ -309,14 +310,10 @@ export function TestQuestionEditor({
                 />
               </Field>
 
-              <Field labelText="Figure URL (optional)" hint="Public Supabase Storage URL of a chart/figure shown with the question.">
-                <input
-                  value={draft.figureUrl}
-                  onChange={(e) => patch({ figureUrl: e.target.value })}
-                  className={inputClass}
-                  placeholder="https://…/figures/…"
-                />
-              </Field>
+              <FigureUploadField
+                value={draft.figureUrl}
+                onChange={(figureUrl) => patch({ figureUrl })}
+              />
             </div>
           </section>
 

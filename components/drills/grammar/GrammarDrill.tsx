@@ -30,6 +30,10 @@ type GradeResult = ProcessFeedback & {
   saveStatus?: { mastery: boolean; question: boolean };
 };
 
+type GradeError = {
+  code?: string;
+};
+
 type MasteryEvent = "progress" | "mastered" | "reset";
 
 export function GrammarDrill({
@@ -81,7 +85,17 @@ export function GrammarDrill({
           selectedChoice: selected ?? undefined,
         }),
       });
-      if (!res.ok) throw new Error(`Grading failed (${res.status})`);
+      if (!res.ok) {
+        const failure = (await res.json().catch(() => ({}))) as GradeError;
+        if (failure.code === "monthly_ai_limit") {
+          setError(
+            "You've reached your 500 AI submissions for this month. Your limit resets on the first of next month.",
+          );
+          setPhase("question");
+          return;
+        }
+        throw new Error(`Grading failed (${res.status})`);
+      }
       const data = (await res.json()) as GradeResult;
       setFeedback(data);
       setXpAwarded(data.xpAwarded ?? 0);
