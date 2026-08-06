@@ -468,7 +468,8 @@ function applyEnrichment(question: Test6Question, enrichment: Enrichment): void 
       continue;
     }
     const occurrences = countOccurrences(target.value, replacement.from);
-    if (occurrences !== 1 || !replacement.from || replacement.from === replacement.to) {
+    if (replacement.from === replacement.to) continue;
+    if (occurrences !== 1 || !replacement.from) {
       question.notes.push(`unsafe LaTeX replacement (${replacement.field}, matches=${occurrences})`);
       question.needsReview = true;
       continue;

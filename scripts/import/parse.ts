@@ -10,6 +10,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { fileURLToPath } from "node:url";
+import { DOMParser } from "@xmldom/xmldom";
+import JSZip from "jszip";
 import mammoth from "mammoth";
 import {
   canonicalDomain,
@@ -75,6 +77,101 @@ function decodeEntities(s: string): string {
 const TABLE_ROWSEP = "@@ROW@@";
 const UNDERLINE_OPEN = "\uE000";
 const UNDERLINE_CLOSE = "\uE001";
+const MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math";
+const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+function childElements(node: Node): Element[] {
+  const elements: Element[] = [];
+  for (let index = 0; index < node.childNodes.length; index++) {
+    const child = node.childNodes.item(index);
+    if (child?.nodeType === 1) elements.push(child as Element);
+  }
+  return elements;
+}
+
+function elementName(node: Element): string {
+  return node.localName || node.nodeName.split(":").pop() || node.nodeName;
+}
+
+function directChild(node: Element, name: string): Element | null {
+  return childElements(node).find((child) => elementName(child) === name) ?? null;
+}
+
+function renderOmmlNode(node: Node): string {
+  if (node.nodeType === 3) return node.nodeValue ?? "";
+  if (node.nodeType !== 1) return "";
+  const element = node as Element;
+  const name = elementName(element);
+  const renderChildren = () => childElements(element).map(renderOmmlNode).join("");
+
+  if (name === "t") return element.textContent ?? "";
+  if (name.endsWith("Pr") || name === "ctrlPr") return "";
+  if (name === "f") {
+    return `\\frac{${directChild(element, "num") ? renderOmmlNode(directChild(element, "num") as Element) : ""}}{${
+      directChild(element, "den") ? renderOmmlNode(directChild(element, "den") as Element) : ""
+    }}`;
+  }
+  if (name === "rad") {
+    const degree = directChild(element, "deg");
+    const expression = directChild(element, "e");
+    const body = expression ? renderOmmlNode(expression) : "";
+    return degree && renderOmmlNode(degree).trim()
+      ? `\\sqrt[${renderOmmlNode(degree).trim()}]{${body}}`
+      : `\\sqrt{${body}}`;
+  }
+  if (name === "sSup") {
+    return `{${renderOmmlNode(directChild(element, "e") as Element)}}^{${renderOmmlNode(
+      directChild(element, "sup") as Element,
+    )}}`;
+  }
+  if (name === "sSub") {
+    return `{${renderOmmlNode(directChild(element, "e") as Element)}}_{${renderOmmlNode(
+      directChild(element, "sub") as Element,
+    )}}`;
+  }
+  if (name === "sSubSup") {
+    return `{${renderOmmlNode(directChild(element, "e") as Element)}}_{${renderOmmlNode(
+      directChild(element, "sub") as Element,
+    )}}^{${renderOmmlNode(directChild(element, "sup") as Element)}}`;
+  }
+  if (name === "bar") return `\\overline{${renderOmmlNode(directChild(element, "e") as Element)}}`;
+  return renderChildren();
+}
+
+export function ommlToLatex(omml: string): string {
+  const document = new DOMParser().parseFromString(
+    `<root xmlns:m="${MATH_NS}" xmlns:w="${WORD_NS}">${omml}</root>`,
+    "application/xml",
+  );
+  const math = childElements(document.documentElement)[0];
+  if (!math) return "";
+  return renderOmmlNode(math)
+    .replace(/π/g, "\\pi")
+    .replace(/[−–—]/g, "-")
+    .replace(/×/g, "\\times ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapeXmlText(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+async function docxWithOmmlAsLatex(docxPath: string): Promise<Buffer> {
+  const source = fs.readFileSync(docxPath);
+  const archive = await JSZip.loadAsync(source);
+  const documentFile = archive.file("word/document.xml");
+  if (!documentFile) throw new Error("DOCX is missing word/document.xml");
+  const xml = await documentFile.async("string");
+  if (!xml.includes("<m:oMath")) return source;
+
+  const converted = xml.replace(/<m:oMath\b[^>]*>[\s\S]*?<\/m:oMath>/g, (equation) => {
+    const latex = ommlToLatex(equation);
+    return `<w:r><w:t xml:space="preserve">$${escapeXmlText(latex)}$</w:t></w:r>`;
+  });
+  archive.file("word/document.xml", converted);
+  return archive.generateAsync({ type: "nodebuffer" });
+}
 
 // Mammoth emits underline runs as <u> when configured with the style map below.
 // Keep only those safe tags while flattening every other HTML formatting tag.
@@ -368,8 +465,9 @@ export async function docxToContent(
 ): Promise<{ lines: string[]; images: Map<string, { buffer: Buffer; contentType: string }> }> {
   const images = new Map<string, { buffer: Buffer; contentType: string }>();
   let n = 0;
+  const input = await docxWithOmmlAsLatex(docxPath);
   const { value: html } = await mammoth.convertToHtml(
-    { path: docxPath },
+    { buffer: input },
     {
       // Underline is ignored by Mammoth unless it is explicitly mapped.
       // The runtime safely renders this exact <u>...</u> markup.
