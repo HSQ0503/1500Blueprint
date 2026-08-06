@@ -63,11 +63,13 @@ function LockableCard({ locked, title, children }: { locked: boolean; title: str
 export function DrillCatalog({
   grammarMastery,
   streak,
+  readingLocked,
   nonGrammarDrillsLocked,
   isAdmin,
 }: {
   grammarMastery: GrammarMasteryState;
   streak: number;
+  readingLocked: boolean;
   nonGrammarDrillsLocked: boolean;
   isAdmin: boolean;
 }) {
@@ -86,8 +88,8 @@ export function DrillCatalog({
       {nonGrammarDrillsLocked && (
         <div className="mb-6 rounded-xl border border-gold/40 bg-gold/[0.07] px-4 py-3 text-[13px] font-semibold leading-5 text-navy/70">
           {isAdmin
-            ? "Non-grammar drills are locked for students — you can still open them as an admin."
-            : "Grammar is available now. All other drills are under construction and will return soon."}
+            ? "Some drills are locked for students — you can still open them as an admin."
+            : "Grammar and Reading Comprehension are available now. Other drills are under construction and will return soon."}
         </div>
       )}
 
@@ -166,7 +168,7 @@ export function DrillCatalog({
       <CategoryHeader title="Reading" />
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
         <LockableCard
-          locked={nonGrammarDrillsLocked && !isAdmin}
+          locked={readingLocked && !isAdmin}
           title="Reading Comprehension"
         >
           <div className={cardBox}>

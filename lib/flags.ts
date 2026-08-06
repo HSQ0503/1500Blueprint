@@ -12,13 +12,12 @@ export function isPracticeTestUnderConstruction(slug: string): boolean {
   return (LOCKED_PRACTICE_TEST_SLUGS as readonly string[]).includes(slug);
 }
 
-// Student-facing drill kill switch. Grammar remains available while the other
-// drill experiences are being rebuilt; admins retain access for QA.
+// Student-facing drill kill switch. Grammar and Reading remain available while
+// the other drill experiences are being rebuilt; admins retain access for QA.
 export const NON_GRAMMAR_DRILLS_LOCKED = true;
 
 const NON_GRAMMAR_DRILL_SLUGS = [
   "targeted-math",
-  "reading",
   "word-scan",
   "vocab",
   "flashcards",
