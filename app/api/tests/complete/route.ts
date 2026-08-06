@@ -12,6 +12,8 @@ import { awardTest, getNavStats } from "@/lib/gamification/state";
 import { clearTestSession } from "@/lib/sat/testSession";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { AnswerMap, ModuleVariant, SectionId } from "@/lib/sat/types";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { isPracticeTestUnderConstruction } from "@/lib/flags";
 
 type CompleteBody = {
   testSlug?: string;
@@ -40,6 +42,9 @@ export async function POST(req: NextRequest) {
   const { testSlug } = body;
   if (!testSlug) {
     return NextResponse.json({ error: "testSlug is required" }, { status: 400 });
+  }
+  if (isPracticeTestUnderConstruction(testSlug) && !isAdminEmail(session.email)) {
+    return NextResponse.json({ error: "Practice test is under construction" }, { status: 503 });
   }
   const answers = body.answers ?? {};
   const routed = body.routed ?? {};

@@ -1,7 +1,16 @@
-// Kill switch: practice tests are hidden from students while under
-// construction. Flip to false to re-open. Admins (ADMIN_EMAILS) keep access.
-// Pure + edge-safe so proxy.ts and server pages can both import it.
-export const PRACTICE_TESTS_LOCKED = true;
+// Practice Tests 1-5 remain student-locked while Test 6 is public. Admins keep
+// access to every test for QA. Pure + edge-safe for proxy and server routes.
+export const LOCKED_PRACTICE_TEST_SLUGS = [
+  "practice-test-1",
+  "practice-test-2",
+  "practice-test-3",
+  "practice-test-4",
+  "practice-test-5",
+] as const;
+
+export function isPracticeTestUnderConstruction(slug: string): boolean {
+  return (LOCKED_PRACTICE_TEST_SLUGS as readonly string[]).includes(slug);
+}
 
 // Student-facing drill kill switch. Grammar remains available while the other
 // drill experiences are being rebuilt; admins retain access for QA.

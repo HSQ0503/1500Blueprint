@@ -5,7 +5,7 @@ import { ChevronRightIcon } from "@/components/shell/icons";
 import { listTests } from "@/lib/sat/loadTest";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { PRACTICE_TESTS_LOCKED } from "@/lib/flags";
+import { isPracticeTestUnderConstruction } from "@/lib/flags";
 import { getNavStats, getTestProgress } from "@/lib/gamification/state";
 
 export const metadata = {
@@ -38,56 +38,7 @@ function HeroStat({ value, label, gold }: { value: string; label: string; gold?:
 export default async function PracticeTestsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
-
-  if (PRACTICE_TESTS_LOCKED && !isAdminEmail(session.email)) {
-    const nav = await getNavStats(session.email);
-    return (
-      <div className="min-h-dvh bg-haze text-ink">
-        <AppNav activePage="tests" stats={nav} />
-        <div
-          className="relative overflow-hidden"
-          style={{
-            background:
-              "linear-gradient(110deg,transparent 36%,rgba(124,203,255,0.22) 44%,transparent 52%)," +
-              "linear-gradient(130deg,#07193b 0%,#0b2a5b 42%,#1b46a8 74%,#0b2a5b 100%)",
-          }}
-        >
-          <div className="mx-auto w-full max-w-[980px] px-5 pb-9 pt-[30px] sm:px-6">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky">
-              Bluebook-style digital SAT
-            </div>
-            <div className="mt-3 h-0.5 w-[46px] bg-gold" />
-            <h1 className="mt-3.5 font-display text-[28px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[38px] sm:leading-[1.05]">
-              Full-length practice tests
-            </h1>
-          </div>
-        </div>
-        <main className="mx-auto w-full max-w-[980px] px-6 pb-12 pt-7">
-          <div className="rounded-xl border-[1.5px] border-dashed border-gold/50 bg-gold/[0.06] p-8 text-center">
-            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold-600">Under construction</div>
-            <h2 className="mt-2 font-display text-[22px] font-extrabold text-navy">
-              Practice tests are getting an upgrade.
-            </h2>
-            <p className="mx-auto mt-2 max-w-[460px] text-[14px] leading-[1.6] text-navy/60">
-              They&apos;re offline while we build the new version. Your past attempts and scores are safe. Meanwhile,
-              keep the streak alive in Drills.
-            </p>
-            <Link
-              href="/drills"
-              className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-navy px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:bg-navy-700"
-            >
-              Go to Drills
-              <ChevronRightIcon className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        </main>
-        <footer className="mx-auto w-full max-w-[980px] px-6 pb-10 text-center text-xs text-navy/40">
-          1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
-          Board.
-        </footer>
-      </div>
-    );
-  }
+  const isAdmin = isAdminEmail(session.email);
 
   const [tests, nav, progress] = await Promise.all([
     listTests(),
@@ -144,11 +95,11 @@ export default async function PracticeTestsPage() {
       </div>
 
       <main className="mx-auto w-full max-w-[980px] px-6 pb-12 pt-7">
-        {PRACTICE_TESTS_LOCKED && (
-          <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-[13px] font-semibold text-navy/70">
-            Practice tests are locked for students right now — you&apos;re seeing this page as an admin.
-          </div>
-        )}
+        <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-[13px] font-semibold text-navy/70">
+          {isAdmin
+            ? "Practice Tests 1–5 are locked for students; Test 6 is public. You can access every test as an admin."
+            : "Practice Tests 1–5 are under construction. Practice Test 6 is available now."}
+        </div>
         <div className="mb-4 flex items-center gap-3">
           <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-navy/55">Choose a test</h2>
           <span className="h-px flex-1 bg-navy/12" />
@@ -167,55 +118,88 @@ export default async function PracticeTestsPage() {
               const { num, label } = parseTest(t.slug, t.title);
               const best = progress.bestBySlug[t.slug] ?? null;
               const count = progress.countBySlug[t.slug] ?? 0;
+              const locked = isPracticeTestUnderConstruction(t.slug) && !isAdmin;
+              const cardContent = (
+                <>
+                  <div
+                    className={`flex h-12 w-12 flex-none items-center justify-center rounded-[10px] font-display text-xl font-extrabold text-white ${
+                      locked ? "bg-navy/45" : "bg-navy"
+                    }`}
+                  >
+                    {num || "•"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className={`font-display text-base font-bold ${locked ? "text-ink/60" : "text-ink"}`}>{label}</h3>
+                    <div className="mt-[7px] flex flex-wrap gap-1.5">
+                      <Chip>R&amp;W + Math</Chip>
+                      <Chip>4 modules</Chip>
+                      <Chip>~2h 14m</Chip>
+                      {locked ? (
+                        <span className="rounded-md bg-gold/15 px-2 py-[3px] text-[11px] font-bold text-gold-600">
+                          Locked
+                        </span>
+                      ) : best ? (
+                        <span className="rounded-md bg-success-bg px-2 py-[3px] text-[11px] font-bold text-success-600">
+                          Best {best}
+                        </span>
+                      ) : (
+                        <span className="rounded-md bg-navy/[0.06] px-2 py-[3px] text-[11px] font-semibold text-navy/45">
+                          Not started
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span
+                    className={`ml-auto inline-flex flex-none items-center gap-1.5 rounded-lg px-4 py-[9px] text-[13.5px] font-bold ${
+                      locked
+                        ? "border border-gold/35 bg-gold/[0.08] text-gold-600"
+                        : "bg-navy text-white transition-colors group-hover:bg-navy-700"
+                    }`}
+                  >
+                    {locked ? "Locked" : best ? "Retake" : "Start"}
+                    {!locked && <ChevronRightIcon className="h-3.5 w-3.5" />}
+                  </span>
+                </>
+              );
               return (
                 <li key={t.slug} className="flex flex-col">
-                  <Link
-                    href={`/practice-test/${t.slug}`}
-                    className="group flex items-center gap-[15px] rounded-xl border border-navy/15 border-t-2 border-t-brand bg-white p-[18px] transition-colors hover:border-navy/30"
-                  >
-                    <div className="flex h-12 w-12 flex-none items-center justify-center rounded-[10px] bg-navy font-display text-xl font-extrabold text-white">
-                      {num || "•"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-display text-base font-bold text-ink">{label}</h3>
-                      <div className="mt-[7px] flex flex-wrap gap-1.5">
-                        <Chip>R&amp;W + Math</Chip>
-                        <Chip>4 modules</Chip>
-                        <Chip>~2h 14m</Chip>
-                        {best ? (
-                          <span className="rounded-md bg-success-bg px-2 py-[3px] text-[11px] font-bold text-success-600">
-                            Best {best}
-                          </span>
-                        ) : (
-                          <span className="rounded-md bg-navy/[0.06] px-2 py-[3px] text-[11px] font-semibold text-navy/45">
-                            Not started
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="ml-auto inline-flex flex-none items-center gap-1.5 rounded-lg bg-navy px-4 py-[9px] text-[13.5px] font-bold text-white transition-colors group-hover:bg-navy-700">
-                      {best ? "Retake" : "Start"}
-                      <ChevronRightIcon className="h-3.5 w-3.5" />
-                    </span>
-                  </Link>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
-                    <Link
-                      href={`/practice-test/${t.slug}/modules`}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-navy/55 hover:text-navy"
+                  {locked ? (
+                    <div
+                      aria-disabled="true"
+                      className="flex items-center gap-[15px] rounded-xl border border-dashed border-navy/15 border-t-2 border-t-gold/50 bg-white/70 p-[18px]"
                     >
-                      Practice a single module
-                      <ChevronRightIcon className="h-3.5 w-3.5" />
+                      {cardContent}
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/practice-test/${t.slug}`}
+                      className="group flex items-center gap-[15px] rounded-xl border border-navy/15 border-t-2 border-t-brand bg-white p-[18px] transition-colors hover:border-navy/30"
+                    >
+                      {cardContent}
                     </Link>
-                    {count > 0 && (
+                  )}
+                  {locked ? (
+                    <div className="mt-1.5 px-1 text-xs font-semibold text-navy/40">Available soon</div>
+                  ) : (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
                       <Link
-                        href={`/practice-test/${t.slug}/attempts`}
+                        href={`/practice-test/${t.slug}/modules`}
                         className="inline-flex items-center gap-1 text-xs font-semibold text-navy/55 hover:text-navy"
                       >
-                        View {count} past {count === 1 ? "attempt" : "attempts"}
+                        Practice a single module
                         <ChevronRightIcon className="h-3.5 w-3.5" />
                       </Link>
-                    )}
-                  </div>
+                      {count > 0 && (
+                        <Link
+                          href={`/practice-test/${t.slug}/attempts`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-navy/55 hover:text-navy"
+                        >
+                          View {count} past {count === 1 ? "attempt" : "attempts"}
+                          <ChevronRightIcon className="h-3.5 w-3.5" />
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}

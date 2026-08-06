@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify, type JWTPayload } from "jose";
 import { SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { isDrillUnderConstruction, PRACTICE_TESTS_LOCKED } from "@/lib/flags";
+import { isDrillUnderConstruction, isPracticeTestUnderConstruction } from "@/lib/flags";
 
 // Paths reachable without a session.
 const PUBLIC_PATHS = ["/login"];
@@ -74,17 +74,16 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Practice tests under construction: students may only reach the index page
-  // (which shows the notice). Deeper test pages and the test APIs are blocked.
-  if (PRACTICE_TESTS_LOCKED && !isAdmin) {
-    if (pathname.startsWith("/practice-test/")) {
+  // Practice Tests 1-5 are under construction; Test 6 is public to students.
+  // API bodies are checked inside their route handlers because Proxy cannot
+  // determine the requested test slug without consuming the request body.
+  if (!isAdmin && pathname.startsWith("/practice-test/")) {
+    const testSlug = pathname.split("/")[2] ?? "";
+    if (isPracticeTestUnderConstruction(testSlug)) {
       const url = request.nextUrl.clone();
       url.pathname = "/practice-test";
       url.search = "";
       return NextResponse.redirect(url);
-    }
-    if (pathname.startsWith("/api/practice-test") || pathname.startsWith("/api/tests")) {
-      return NextResponse.json({ error: "Practice tests are under construction." }, { status: 503 });
     }
   }
 

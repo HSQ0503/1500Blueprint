@@ -10,6 +10,8 @@ import { getModuleByKey } from "@/lib/sat/modules";
 import { isCorrect } from "@/lib/sat/scoring";
 import { saveModuleAttempt } from "@/lib/sat/moduleAttempts";
 import type { AnswerMap } from "@/lib/sat/types";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { isPracticeTestUnderConstruction } from "@/lib/flags";
 
 type Body = {
   testSlug?: string;
@@ -33,6 +35,9 @@ export async function POST(req: NextRequest) {
   const { testSlug, moduleKey } = body;
   if (!testSlug || !moduleKey) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+  }
+  if (isPracticeTestUnderConstruction(testSlug) && !isAdminEmail(session.email)) {
+    return NextResponse.json({ error: "test_under_construction" }, { status: 503 });
   }
 
   const test = await loadTest(testSlug);

@@ -7,6 +7,8 @@ import { getSession } from "@/lib/auth/session";
 import { saveTestSession, clearTestSession } from "@/lib/sat/testSession";
 import type { TestState } from "@/lib/sat/testState";
 import type { Highlight } from "@/components/test/HighlightablePassage";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { isPracticeTestUnderConstruction } from "@/lib/flags";
 
 type SaveBody = {
   testSlug?: string;
@@ -26,6 +28,9 @@ export async function POST(req: NextRequest) {
   }
   if (!body.testSlug || !body.state || typeof body.state !== "object") {
     return NextResponse.json({ error: "testSlug and state are required" }, { status: 400 });
+  }
+  if (isPracticeTestUnderConstruction(body.testSlug) && !isAdminEmail(session.email)) {
+    return NextResponse.json({ error: "Practice test is under construction" }, { status: 503 });
   }
 
   try {
@@ -47,6 +52,9 @@ export async function DELETE(req: NextRequest) {
   const testSlug = new URL(req.url).searchParams.get("testSlug");
   if (!testSlug) {
     return NextResponse.json({ error: "testSlug is required" }, { status: 400 });
+  }
+  if (isPracticeTestUnderConstruction(testSlug) && !isAdminEmail(session.email)) {
+    return NextResponse.json({ error: "Practice test is under construction" }, { status: 503 });
   }
 
   try {
