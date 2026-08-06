@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getSession } from "@/lib/auth/session";
 import { getDrill, getQuestion } from "@/lib/drills/admin-queries";
 import { refundAiSubmission, reserveAiSubmission } from "@/lib/drills/aiQuota";
-import { loadGrammarMastery, recordProgress } from "@/lib/drills/progress";
+import { loadGrammarMastery, loadReadingProgress, recordProgress } from "@/lib/drills/progress";
 import { awardDrill, getNavStats } from "@/lib/gamification/state";
 import type { DrillSlug } from "@/lib/drills/types";
 import type {
@@ -277,6 +277,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  let readingProgress: Awaited<ReturnType<typeof loadReadingProgress>> | undefined;
+  if (drillSlug === "reading" && attemptSaved) {
+    try {
+      readingProgress = await loadReadingProgress(session.email);
+    } catch (e) {
+      console.error("reading progress failed:", e);
+    }
+  }
+
   const saveStatus = { mastery: attemptSaved, question: questionSaved };
 
   if (drill.aiRole === "grade-process") {
@@ -312,5 +321,13 @@ export async function POST(req: NextRequest) {
   }
   const captured = keyPoints.map((text) => ({ text, captured: byText.get(norm(text)) ?? false }));
 
-  return NextResponse.json({ score, verdict, captured, saveStatus, aiUsage: quota, ...(gam ?? {}) });
+  return NextResponse.json({
+    score,
+    verdict,
+    captured,
+    readingProgress,
+    saveStatus,
+    aiUsage: quota,
+    ...(gam ?? {}),
+  });
 }

@@ -11,6 +11,10 @@ import {
   calculateGrammarMastery,
   type GrammarMasteryState,
 } from "./mastery";
+import {
+  calculateReadingProgress,
+  type ReadingProgressState,
+} from "./readingProgress";
 import type {
   AnswerType,
   DrillContent,
@@ -98,6 +102,20 @@ export async function loadGrammarMastery(email: string): Promise<GrammarMasteryS
     .returns<{ score: number | null; created_at: string }[]>();
   if (error) throw progressDatabaseError("Could not load grammar mastery", error);
   return calculateGrammarMastery((data ?? []).map((row) => row.score));
+}
+
+// Reading progression is rebuilt from the same append-only attempt ledger so
+// consecutive passes, failures, and level-ups survive navigation and reloads.
+export async function loadReadingProgress(email: string): Promise<ReadingProgressState> {
+  const { data, error } = await supabaseAdmin()
+    .from("drill_attempts")
+    .select("score,created_at")
+    .eq("email", email)
+    .eq("drill_slug", "reading")
+    .order("created_at", { ascending: true })
+    .returns<{ score: number | null; created_at: string }[]>();
+  if (error) throw progressDatabaseError("Could not load reading progress", error);
+  return calculateReadingProgress((data ?? []).map((row) => row.score));
 }
 
 // Filter + order a drill's published questions for one student:

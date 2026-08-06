@@ -7,8 +7,9 @@ import { VocabDrill } from "@/components/drills/vocab/VocabDrill";
 import { FlashcardsDrill } from "@/components/drills/flashcards/FlashcardsDrill";
 import { AiMathDrill } from "@/components/drills/aimath/AiMathDrill";
 import { loadDrillQuestions } from "@/lib/drills/loadDrillContent";
-import { loadGrammarMastery, selectForStudent } from "@/lib/drills/progress";
+import { loadGrammarMastery, loadReadingProgress, selectForStudent } from "@/lib/drills/progress";
 import { calculateGrammarMastery } from "@/lib/drills/mastery";
+import { calculateReadingProgress } from "@/lib/drills/readingProgress";
 import { getSession } from "@/lib/auth/session";
 import { getNavStats } from "@/lib/gamification/state";
 import {
@@ -71,11 +72,16 @@ export default async function DrillPage({
     }
     case "reading": {
       const raw = await loadDrillQuestions("reading");
-      const ordered = email ? await selectForStudent("reading", email, raw) : raw;
+      const [ordered, progress] = email
+        ? await Promise.all([
+            selectForStudent("reading", email, raw),
+            loadReadingProgress(email),
+          ])
+        : [raw, calculateReadingProgress([])];
       const passages = toReadingItems(ordered);
       if (passages.length === 0)
         return <DrillEmpty title="Reading Comprehension Drill" eyebrow="Reading & Writing" />;
-      return <ReadingDrill passages={passages} />;
+      return <ReadingDrill passages={passages} initialProgress={progress} />;
     }
     case "word-scan":
       return <WordScanDrill mode={sp.mode === "bad-mold" ? "bad-mold" : "ceased"} />;

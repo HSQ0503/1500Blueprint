@@ -9,8 +9,9 @@ import { GradingLoader } from "../shared/GradingLoader";
 import { ScoreBanner } from "../shared/ScoreBanner";
 import { chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
 import { KeyPointsChecklist, ReadingCard, RecallHeading } from "./ReadingPieces";
+import { READING_PASS_SCORE, type ReadingProgressState } from "@/lib/drills/readingProgress";
 import type { KeyPoint, ReadingPassage } from "./mock";
-import { readingPassage, readingProgress } from "./mock";
+import { readingPassage } from "./mock";
 
 // One passage the drill can run. Mirrors ReadingContent on a DrillQuestion: the
 // page maps a DB question -> this shape ({ id, body, readSeconds, keyPoints }).
@@ -29,6 +30,7 @@ type GradeResponse = {
   verdict: string;
   captured: { text: string; captured: boolean }[];
   xpAwarded?: number;
+  readingProgress?: ReadingProgressState;
 };
 
 type GradeError = {
@@ -44,7 +46,13 @@ const MOCK_ITEM: ReadingItem = {
   keyPoints: [],
 };
 
-export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
+export function ReadingDrill({
+  passages,
+  initialProgress,
+}: {
+  passages?: ReadingItem[];
+  initialProgress: ReadingProgressState;
+}) {
   const items = passages && passages.length > 0 ? passages : [MOCK_ITEM];
 
   const [index, setIndex] = useState(0);
@@ -56,6 +64,7 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
   const [result, setResult] = useState<GradeResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [quotaReached, setQuotaReached] = useState(false);
+  const [progress, setProgress] = useState(initialProgress);
 
   const lowTime = secondsLeft <= 20;
 
@@ -101,6 +110,7 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
       }
       const data = (await res.json()) as GradeResponse;
       setResult(data);
+      if (data.readingProgress) setProgress(data.readingProgress);
       setPhase("feedback");
     } catch {
       setPhase("error");
@@ -125,7 +135,7 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
   }
 
   const passageForCard: ReadingPassage = {
-    level: readingProgress.level,
+    level: progress.level,
     readSeconds: item.readSeconds,
     body: item.body,
   };
@@ -141,9 +151,9 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
   const right = (
     <span className="hidden items-center gap-2.5 text-sm text-navy/55 sm:inline-flex">
       Streak
-      <StreakDots streak={readingProgress.streak} target={readingProgress.streakTarget} />
+      <StreakDots streak={progress.streak} target={progress.streakTarget} />
       <span className="tabular-nums text-navy/40">
-        {readingProgress.streak}/{readingProgress.streakTarget}
+        {progress.streak}/{progress.streakTarget}
       </span>
     </span>
   );
@@ -160,11 +170,11 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
       {/* Progression rule bar — Level pill + streak target, shown while practicing. */}
       {phase === "read" || phase === "recall" ? (
         <div className={`mx-auto mb-5 max-w-3xl ${surface} flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5`}>
-          <span className={`${chip} bg-brand/10 text-brand`}>Level {readingProgress.level}</span>
+          <span className={`${chip} bg-brand/10 text-brand`}>Level {progress.level}</span>
           <span className="h-4 w-px bg-navy/12" />
           <span className="text-sm text-navy/65">
-            Your current streak is {readingProgress.streak}. Get {readingProgress.streakTarget} in a
-            row to advance to level {readingProgress.level + 1}.
+            Your current streak is {progress.streak}. Get {progress.streakTarget} in a row to
+            advance to level {progress.level + 1}.
           </span>
         </div>
       ) : null}
@@ -223,7 +233,11 @@ export function ReadingDrill({ passages }: { passages?: ReadingItem[] }) {
 
       {phase === "feedback" && result ? (
         <div className="mx-auto max-w-3xl space-y-4">
-          <ScoreBanner score={result.score} verdict={result.verdict} />
+          <ScoreBanner
+            score={result.score}
+            verdict={result.verdict}
+            successThreshold={READING_PASS_SCORE}
+          />
           {result.xpAwarded ? (
             <div className="flex items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#0b2a5b,#1b46a8)] px-4 py-3 text-center font-display text-lg font-extrabold text-gold">
               +{result.xpAwarded} XP earned
