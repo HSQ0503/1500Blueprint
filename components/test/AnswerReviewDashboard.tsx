@@ -169,7 +169,7 @@ export function AnswerReviewDashboard({
                         }`}
                       >
                         <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-current text-xs font-bold">{choice.id}</span>
-                        <span className="min-w-0 flex-1"><MathText>{choice.text}</MathText></span>
+                        <span className="min-w-0 flex-1 whitespace-pre-line"><MathText>{choice.text}</MathText></span>
                         {!hideAnswers && isKey ? <span className="text-[11px] font-bold">Correct answer</span> : null}
                         {!hideAnswers && isAnswer && !isKey ? <span className="text-[11px] font-bold">Your answer</span> : null}
                       </div>

@@ -143,16 +143,16 @@ export function ModuleResults({
 
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div
-                    className={`rounded-lg px-3 py-2 text-sm ${
+                    className={`whitespace-pre-line rounded-lg px-3 py-2 text-sm ${
                       correct ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
                     }`}
                   >
                     <span className="block text-xs uppercase tracking-wide opacity-70">Your answer</span>
-                    {answerText(q, userValue)}
+                    <MathText>{answerText(q, userValue)}</MathText>
                   </div>
-                  <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+                  <div className="whitespace-pre-line rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
                     <span className="block text-xs uppercase tracking-wide opacity-70">Correct answer</span>
-                    {correctText(q)}
+                    <MathText>{correctText(q)}</MathText>
                   </div>
                 </div>
 

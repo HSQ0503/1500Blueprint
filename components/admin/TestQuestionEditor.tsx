@@ -320,12 +320,14 @@ export function TestQuestionEditor({
           {draft.type === "mc" ? (
             <section className="rounded-card border border-navy/15 bg-white p-4">
               <h2 className={`${label} mb-1 text-navy/55`}>Choices</h2>
-              <p className="mb-4 text-[13px] text-navy/50">Select the radio to mark the correct answer.</p>
+              <p className="mb-4 text-[13px] text-navy/50">
+                Select the radio to mark the correct answer. Press Enter inside a choice to add another line.
+              </p>
               <div className="flex flex-col gap-4">
                 {draft.choices.map((c) => (
                   <div key={c.letter} className="rounded-[10px] border border-navy/12 p-3">
-                    <div className="flex items-center gap-3">
-                      <label className="flex flex-none items-center gap-2 font-display text-sm font-bold text-navy">
+                    <div className="flex items-start gap-3">
+                      <label className="flex min-h-11 flex-none cursor-pointer items-center gap-2 font-display text-sm font-bold text-navy">
                         <input
                           type="radio"
                           name="correct"
@@ -335,11 +337,13 @@ export function TestQuestionEditor({
                         />
                         {c.letter}
                       </label>
-                      <input
+                      <textarea
                         value={c.text}
                         onChange={(e) => patchChoice(c.letter, { text: e.target.value })}
-                        className={inputClass}
-                        placeholder={`Choice ${c.letter} text`}
+                        rows={2}
+                        aria-label={`Choice ${c.letter} text`}
+                        className={`${inputClass} min-h-[68px] resize-y leading-6`}
+                        placeholder={`Choice ${c.letter} text. Press Enter for another line.`}
                       />
                     </div>
                     <textarea
@@ -463,7 +467,7 @@ function Preview({ draft }: { draft: Draft }) {
                 }`}
               >
                 <span className="font-display font-bold">{c.letter}.</span>
-                <span className="min-w-0">
+                <span className="min-w-0 whitespace-pre-line">
                   {c.text.trim() ? <MathText>{c.text}</MathText> : <span className="text-navy/35">—</span>}
                 </span>
               </li>

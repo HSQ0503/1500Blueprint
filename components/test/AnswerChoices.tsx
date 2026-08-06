@@ -48,7 +48,7 @@ export function AnswerChoices({
                 {choice.id}
               </span>
               <span
-                className={`text-[17px] leading-6 text-exam-ink ${
+                className={`whitespace-pre-line text-[17px] leading-6 text-exam-ink ${
                   isEliminated ? "opacity-45" : ""
                 }`}
               >
