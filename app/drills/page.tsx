@@ -10,6 +10,7 @@ import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getHubState, needsOnboarding } from "@/lib/gamification/state";
 import { loadGrammarMastery } from "@/lib/drills/progress";
+import { NON_GRAMMAR_DRILLS_LOCKED } from "@/lib/flags";
 
 export const metadata = {
   title: "Practice Drills — 1500 SAT Blueprint",
@@ -53,7 +54,12 @@ export default async function DrillsPage() {
         <Achievements data={hub.achievements} />
       </div>
 
-      <DrillCatalog grammarMastery={grammarMastery} streak={hub.player.streak} />
+      <DrillCatalog
+        grammarMastery={grammarMastery}
+        streak={hub.player.streak}
+        nonGrammarDrillsLocked={NON_GRAMMAR_DRILLS_LOCKED}
+        isAdmin={nav.isAdmin}
+      />
 
       {showOnboarding && (
         <OnboardingTour firstName={hub.player.firstName} dailyTarget={hub.dailyGoal.total} />

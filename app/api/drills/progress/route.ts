@@ -8,6 +8,8 @@ import { getSession } from "@/lib/auth/session";
 import { getQuestion } from "@/lib/drills/admin-queries";
 import { recordProgress } from "@/lib/drills/progress";
 import type { DrillSlug } from "@/lib/drills/types";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { isDrillUnderConstruction } from "@/lib/flags";
 
 const OBJECTIVE: ReadonlySet<string> = new Set(["targeted-math", "vocab"]);
 
@@ -30,6 +32,9 @@ export async function POST(req: NextRequest) {
       { error: "drillSlug (objective), questionId, and correct are required" },
       { status: 400 },
     );
+  }
+  if (isDrillUnderConstruction(drillSlug) && !isAdminEmail(session.email)) {
+    return NextResponse.json({ error: "This drill is under construction." }, { status: 503 });
   }
 
   // Confirm the question exists, belongs to this drill, and is published — same

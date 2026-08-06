@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify, type JWTPayload } from "jose";
 import { SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { PRACTICE_TESTS_LOCKED } from "@/lib/flags";
+import { isDrillUnderConstruction, PRACTICE_TESTS_LOCKED } from "@/lib/flags";
 
 // Paths reachable without a session.
 const PUBLIC_PATHS = ["/login"];
@@ -50,10 +50,23 @@ export async function proxy(request: NextRequest) {
   }
 
   const email = typeof payload.sub === "string" ? payload.sub : null;
+  const isAdmin = isAdminEmail(email);
 
   if (isAdminPath(pathname)) {
-    if (!isAdminEmail(email)) {
+    if (!isAdmin) {
       // Signed-in non-admin (a student): bounce to the drills hub.
+      const url = request.nextUrl.clone();
+      url.pathname = "/drills";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Only Grammar is student-ready. Keep the remaining drill players behind
+  // the hub's under-construction state while preserving admin QA access.
+  if (!isAdmin && pathname.startsWith("/drills/")) {
+    const drillSlug = pathname.split("/")[2] ?? "";
+    if (isDrillUnderConstruction(drillSlug)) {
       const url = request.nextUrl.clone();
       url.pathname = "/drills";
       url.search = "";
@@ -63,7 +76,7 @@ export async function proxy(request: NextRequest) {
 
   // Practice tests under construction: students may only reach the index page
   // (which shows the notice). Deeper test pages and the test APIs are blocked.
-  if (PRACTICE_TESTS_LOCKED && !isAdminEmail(email)) {
+  if (PRACTICE_TESTS_LOCKED && !isAdmin) {
     if (pathname.startsWith("/practice-test/")) {
       const url = request.nextUrl.clone();
       url.pathname = "/practice-test";

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { drillStats, patternOfTheDay } from "@/lib/gamification";
 import type { GrammarMasteryState } from "@/lib/drills/mastery";
 import { DrillIcon, type DrillIconKey } from "./icons";
@@ -42,12 +43,33 @@ const startBtn =
   "inline-flex flex-1 items-center justify-center gap-[7px] rounded-[11px] bg-brand px-3 py-3 text-sm font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px";
 const ghostBtn = "rounded-[11px] bg-haze px-4 py-3 text-[13px] font-semibold text-navy transition-colors hover:bg-navy/10";
 
+function LockableCard({ locked, title, children }: { locked: boolean; title: string; children: ReactNode }) {
+  if (!locked) return <>{children}</>;
+  return (
+    <div className="relative h-full">
+      <div inert aria-hidden="true" className="h-full select-none opacity-30 grayscale">
+        {children}
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 p-5 backdrop-blur-[1px]">
+        <div role="status" className="max-w-[220px] rounded-xl border border-gold/45 bg-[#fffaf0] px-5 py-4 text-center shadow-sm">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.15em] text-gold-600">Under construction</div>
+          <p className="mt-1.5 text-[13px] font-semibold leading-5 text-navy/70">{title} is coming soon.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DrillCatalog({
   grammarMastery,
   streak,
+  nonGrammarDrillsLocked,
+  isAdmin,
 }: {
   grammarMastery: GrammarMasteryState;
   streak: number;
+  nonGrammarDrillsLocked: boolean;
+  isAdmin: boolean;
 }) {
   const grammarBarPct =
     grammarMastery.total > 0
@@ -60,6 +82,14 @@ export function DrillCatalog({
         <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-navy">Practice Drills</h2>
         <span className="text-[13px] text-navy/50">Earn XP. Build streaks. Master one pattern at a time.</span>
       </div>
+
+      {nonGrammarDrillsLocked && (
+        <div className="mb-6 rounded-xl border border-gold/40 bg-gold/[0.07] px-4 py-3 text-[13px] font-semibold leading-5 text-navy/70">
+          {isAdmin
+            ? "Non-grammar drills are locked for students — you can still open them as an admin."
+            : "Grammar is available now. All other drills are under construction and will return soon."}
+        </div>
+      )}
 
       {/* Writing */}
       <CategoryHeader title="Writing" />
@@ -135,7 +165,11 @@ export function DrillCatalog({
       {/* Reading */}
       <CategoryHeader title="Reading" />
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className={cardBox}>
+        <LockableCard
+          locked={nonGrammarDrillsLocked && !isAdmin}
+          title="Reading Comprehension"
+        >
+          <div className={cardBox}>
           <div className="flex items-center gap-3.5">
             <IconTile name="reading" />
             <div className="min-w-0">
@@ -170,9 +204,11 @@ export function DrillCatalog({
               History
             </Link>
           </div>
-        </div>
+          </div>
+        </LockableCard>
 
-        <div className={cardBox}>
+        <LockableCard locked={nonGrammarDrillsLocked && !isAdmin} title="Word Scan Drill">
+          <div className={cardBox}>
           <div className="flex items-center gap-3.5">
             <IconTile name="scan" />
             <div className="min-w-0">
@@ -207,13 +243,15 @@ export function DrillCatalog({
               Bad Mold
             </Link>
           </div>
-        </div>
+          </div>
+        </LockableCard>
       </div>
 
       {/* Math */}
       <CategoryHeader title="Math" />
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MathCard
+          locked={nonGrammarDrillsLocked && !isAdmin}
           name="target"
           tier="Medium"
           tierClass="text-success-600"
@@ -227,6 +265,7 @@ export function DrillCatalog({
           ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
         />
         <MathCard
+          locked={nonGrammarDrillsLocked && !isAdmin}
           name="target"
           tier="Hard"
           tierClass="text-danger-600"
@@ -240,6 +279,7 @@ export function DrillCatalog({
           ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
         />
         <MathCard
+          locked={nonGrammarDrillsLocked && !isAdmin}
           name="aimath"
           tier="Beta"
           tierClass="text-brand-600"
@@ -258,7 +298,8 @@ export function DrillCatalog({
       {/* Vocabulary */}
       <CategoryHeader title="Vocabulary" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className={cardBox}>
+        <LockableCard locked={nonGrammarDrillsLocked && !isAdmin} title="Vocab Drill">
+          <div className={cardBox}>
           <div className="flex items-center gap-3.5">
             <IconTile name="vocab" />
             <div className="min-w-0">
@@ -291,9 +332,11 @@ export function DrillCatalog({
               Progress
             </Link>
           </div>
-        </div>
+          </div>
+        </LockableCard>
 
-        <div className={cardBox}>
+        <LockableCard locked={nonGrammarDrillsLocked && !isAdmin} title="Vocab Flashcards">
+          <div className={cardBox}>
           <div className="flex items-center gap-3.5">
             <IconTile name="flashcards" />
             <div className="min-w-0">
@@ -325,13 +368,15 @@ export function DrillCatalog({
               Manage
             </Link>
           </div>
-        </div>
+          </div>
+        </LockableCard>
       </div>
     </div>
   );
 }
 
 function MathCard({
+  locked,
   name,
   tier,
   tierClass,
@@ -342,6 +387,7 @@ function MathCard({
   cta,
   ctaClass,
 }: {
+  locked: boolean;
   name: DrillIconKey;
   tier: string;
   tierClass: string;
@@ -353,7 +399,8 @@ function MathCard({
   ctaClass: string;
 }) {
   return (
-    <div className="flex flex-col rounded-2xl bg-white p-5 shadow-pop">
+    <LockableCard locked={locked} title={title}>
+      <div className="flex h-full flex-col rounded-2xl bg-white p-5 shadow-pop">
       <div className="flex items-center gap-3">
         <IconTile name={name} large={false} />
         <div>
@@ -377,6 +424,7 @@ function MathCard({
       >
         {cta}
       </Link>
-    </div>
+      </div>
+    </LockableCard>
   );
 }

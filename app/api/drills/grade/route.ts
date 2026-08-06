@@ -18,6 +18,8 @@ import type {
   ReadingContent,
   WalkthroughStep,
 } from "@/lib/drills/types";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { isDrillUnderConstruction } from "@/lib/flags";
 
 // Per-student grading runs on a cheap, fast model (Haiku 4.5) per the cost
 // analysis (~$0.003/grade, well under the $10/student/month cap). Kept separate
@@ -130,6 +132,9 @@ export async function POST(req: NextRequest) {
       { error: "drillSlug, questionId, and studentText are required" },
       { status: 400 },
     );
+  }
+  if (isDrillUnderConstruction(drillSlug) && !isAdminEmail(session.email)) {
+    return NextResponse.json({ error: "This drill is under construction." }, { status: 503 });
   }
 
   const [question, drill] = await Promise.all([getQuestion(questionId), getDrill(drillSlug)]);

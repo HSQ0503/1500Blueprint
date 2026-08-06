@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { GrammarDrill } from "@/components/drills/grammar/GrammarDrill";
 import { TargetedMathDrill } from "@/components/drills/math/TargetedMathDrill";
 import { ReadingDrill } from "@/components/drills/reading/ReadingDrill";
@@ -19,6 +19,8 @@ import {
   toVocabItems,
 } from "@/lib/drills/runtime-map";
 import { DrillEmpty } from "@/components/drills/shared/DrillEmpty";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { isDrillUnderConstruction } from "@/lib/flags";
 
 // Next 16: route params and searchParams are async.
 export default async function DrillPage({
@@ -35,6 +37,7 @@ export default async function DrillPage({
   // filtering, so the drill still runs.
   const session = await getSession();
   const email = session?.email ?? null;
+  if (isDrillUnderConstruction(slug) && !isAdminEmail(email)) redirect("/drills");
 
   switch (slug) {
     case "grammar": {
