@@ -58,3 +58,13 @@ test("the review screen remains timed and submits at zero", () => {
   assert.equal(state.phase, "moduleOver");
   assert.equal(state.timeLeft, 0);
 });
+
+test("the reducer cannot store more than four digits for a grid-in answer", () => {
+  const reduce = makeReducer(sampleTest);
+  let state = reduce(initialState(), { type: "DEV_JUMP", sectionIndex: 1, moduleOrder: 1 });
+  const gridQuestion = sampleTest.sections[1].module1.questions.find((question) => question.type === "grid");
+  assert.ok(gridQuestion);
+
+  state = reduce(state, { type: "SELECT", questionId: gridQuestion.id, value: "-12.345" });
+  assert.equal(state.answers[gridQuestion.id], "-12.34");
+});

@@ -73,11 +73,24 @@ function decodeEntities(s: string): string {
 // (rows joined by a sentinel) so it survives the line split and passage assembly
 // as a single block; the renderer splits the sentinel and emits an HTML <table>.
 const TABLE_ROWSEP = "@@ROW@@";
+const UNDERLINE_OPEN = "\uE000";
+const UNDERLINE_CLOSE = "\uE001";
+
+// Mammoth emits underline runs as <u> when configured with the style map below.
+// Keep only those safe tags while flattening every other HTML formatting tag.
+function stripHtmlPreservingUnderlines(html: string): string {
+  return html
+    .replace(/<u>/gi, UNDERLINE_OPEN)
+    .replace(/<\/u>/gi, UNDERLINE_CLOSE)
+    .replace(/<[^>]+>/g, " ")
+    .replaceAll(UNDERLINE_OPEN, "<u>")
+    .replaceAll(UNDERLINE_CLOSE, "</u>");
+}
 
 function tableToMarkdown(tableHtml: string): string {
   const rows = [...tableHtml.matchAll(/<tr[\s\S]*?<\/tr>/gi)].map((r) => {
     const cells = [...r[0].matchAll(/<t[hd][\s\S]*?<\/t[hd]>/gi)].map((c) =>
-      decodeEntities(c[0].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim(),
+      decodeEntities(stripHtmlPreservingUnderlines(c[0])).replace(/\s+/g, " ").trim(),
     );
     return `| ${cells.join(" | ")} |`;
   });
@@ -95,7 +108,11 @@ function htmlToLines(html: string): string[] {
     .replace(/<\/(td|th)>/gi, " ") // table cells: separate, don't glue ("means.B." → "means. B.")
     .replace(/<\/(p|h[1-6]|li|tr|div)>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<u>/gi, UNDERLINE_OPEN)
+    .replace(/<\/u>/gi, UNDERLINE_CLOSE)
     .replace(/<[^>]+>/g, "")
+    .replaceAll(UNDERLINE_OPEN, "<u>")
+    .replaceAll(UNDERLINE_CLOSE, "</u>")
     .replace(/[ \t]{2,}/g, " ");
   return decodeEntities(text)
     .split("\n")
@@ -354,6 +371,9 @@ export async function docxToContent(
   const { value: html } = await mammoth.convertToHtml(
     { path: docxPath },
     {
+      // Underline is ignored by Mammoth unless it is explicitly mapped.
+      // The runtime safely renders this exact <u>...</u> markup.
+      styleMap: ["u => u"],
       convertImage: mammoth.images.imgElement(async (image) => {
         const b64 = await image.read("base64");
         const ext = (image.contentType?.split("/")[1] || "png").replace("jpeg", "jpg");

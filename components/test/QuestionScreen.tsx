@@ -126,6 +126,7 @@ export function QuestionScreen(props: Props) {
   } = props;
   const isRW = section.id === "rw";
   const hasPassage = Boolean(question.passage);
+  const hasPassageTable = question.passage?.includes("@@ROW@@") ?? false;
 
   const [isWide, setIsWide] = useState(true);
   const [leftPct, setLeftPct] = useState(50);
@@ -180,14 +181,21 @@ export function QuestionScreen(props: Props) {
       <main ref={containerRef} className="flex flex-1 overflow-hidden">
         <section className="overflow-y-auto px-10 py-8" style={{ width: `${leftPct}%` }} aria-label="Passage">
           {figure}
-          <HighlightablePassage
-            text={question.passage ?? ""}
-            highlights={highlights}
-            enabled={highlightEnabled}
-            onAdd={onAddHighlight}
-            onRemove={onRemoveHighlight}
-            onSetNote={onSetNote}
-          />
+          {hasPassageTable ? (
+            <QuestionContent
+              text={question.passage ?? ""}
+              pClassName="font-serif text-[17px] leading-7 text-exam-ink"
+            />
+          ) : (
+            <HighlightablePassage
+              text={question.passage ?? ""}
+              highlights={highlights}
+              enabled={highlightEnabled}
+              onAdd={onAddHighlight}
+              onRemove={onRemoveHighlight}
+              onSetNote={onSetNote}
+            />
+          )}
         </section>
 
         <div
@@ -237,14 +245,21 @@ export function QuestionScreen(props: Props) {
           (isRW ? (
             <div className="mt-5">
               {figure}
-              <HighlightablePassage
-                text={question.passage ?? ""}
-                highlights={highlights}
-                enabled={highlightEnabled}
-                onAdd={onAddHighlight}
-                onRemove={onRemoveHighlight}
-                onSetNote={onSetNote}
-              />
+              {hasPassageTable ? (
+                <QuestionContent
+                  text={question.passage ?? ""}
+                  pClassName="font-serif text-[17px] leading-7 text-exam-ink"
+                />
+              ) : (
+                <HighlightablePassage
+                  text={question.passage ?? ""}
+                  highlights={highlights}
+                  enabled={highlightEnabled}
+                  onAdd={onAddHighlight}
+                  onRemove={onRemoveHighlight}
+                  onSetNote={onSetNote}
+                />
+              )}
             </div>
           ) : (
             <QuestionContent

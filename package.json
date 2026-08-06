@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/drills/mastery.test.ts lib/sat/formattedText.test.ts lib/sat/results.test.ts lib/sat/testState.test.ts"
+    "test": "tsx --test lib/drills/mastery.test.ts lib/sat/formattedText.test.ts lib/sat/gridIn.test.ts lib/sat/mathText.test.ts lib/sat/results.test.ts lib/sat/testState.test.ts scripts/import/parse.test.ts scripts/import/parse-test6.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

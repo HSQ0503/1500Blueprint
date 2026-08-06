@@ -12,6 +12,26 @@ import { parseUnderlineMarkup } from "@/lib/sat/formattedText";
 // handles exponents itself, so the fallback only touches non-math text.
 
 const EXPONENT_RE = /\^(\([^)]*\)|[+−-]?[A-Za-z0-9]+)/g;
+const INLINE_MATH_RE = /(?<!\\)\$([^$]+?)(?<!\\)\$/g;
+
+export type MathSegment = { type: "text" | "math"; value: string };
+
+export function parseMathSegments(text: string): MathSegment[] {
+  const segments: MathSegment[] = [];
+  let last = 0;
+  for (const match of text.matchAll(INLINE_MATH_RE)) {
+    const index = match.index ?? 0;
+    if (index > last) {
+      segments.push({ type: "text", value: text.slice(last, index).replace(/\\\$/g, "$") });
+    }
+    segments.push({ type: "math", value: match[1] });
+    last = index + match[0].length;
+  }
+  if (last < text.length) {
+    segments.push({ type: "text", value: text.slice(last).replace(/\\\$/g, "$") });
+  }
+  return segments.length ? segments : [{ type: "text", value: text.replace(/\\\$/g, "$") }];
+}
 
 function renderExponents(text: string): ReactNode[] {
   const out: ReactNode[] = [];
@@ -35,25 +55,21 @@ function renderPlain(text: string, key: string): ReactNode {
 }
 
 function renderMath(text: string, keyPrefix: string): ReactNode[] {
-  // Split on $...$ keeping the delimiters (capturing group). Segments wrapped in
-  // $ are math; everything else is plain text. Using split() avoids mutating a
-  // shared regex's lastIndex inside render.
-  if (!text.includes("$")) return [renderPlain(text, `${keyPrefix}-plain`)];
-  const segments = text.split(/(\$[^$]+\$)/);
+  const segments = parseMathSegments(text);
   return segments.map((segment, index) => {
-    if (segment.length >= 2 && segment.startsWith("$") && segment.endsWith("$")) {
+    if (segment.type === "math") {
       return (
         <span
           key={`${keyPrefix}-math-${index}`}
           // KaTeX output is safe, sanitized HTML. throwOnError:false degrades
           // a malformed expression to its raw source instead of crashing.
           dangerouslySetInnerHTML={{
-            __html: katex.renderToString(segment.slice(1, -1), { throwOnError: false }),
+            __html: katex.renderToString(segment.value, { throwOnError: false }),
           }}
         />
       );
     }
-    return renderPlain(segment, `${keyPrefix}-plain-${index}`);
+    return renderPlain(segment.value, `${keyPrefix}-plain-${index}`);
   });
 }
 

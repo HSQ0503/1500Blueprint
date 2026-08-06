@@ -13,6 +13,7 @@ import type {
   TestModule,
 } from "./types";
 import { routeVariant } from "./scoring";
+import { normalizeGridInInput } from "./gridIn";
 
 export type Phase =
   | "intro"
@@ -97,6 +98,15 @@ export function currentQuestion(test: PracticeTest, s: TestState): Question | un
 }
 
 export function makeReducer(test: PracticeTest) {
+  const gridQuestionIds = new Set(
+    test.sections.flatMap((section) =>
+      [section.module1, ...Object.values(section.module2)]
+        .flatMap((testModule) => testModule.questions)
+        .filter((question) => question.type === "grid")
+        .map((question) => question.id),
+    ),
+  );
+
   function startSection(state: TestState, sectionIndex: number): TestState {
     const section = test.sections[sectionIndex];
     return {
@@ -186,8 +196,12 @@ export function makeReducer(test: PracticeTest) {
         }
         return state;
       }
-      case "SELECT":
-        return { ...state, answers: { ...state.answers, [action.questionId]: action.value } };
+      case "SELECT": {
+        const value = gridQuestionIds.has(action.questionId)
+          ? normalizeGridInInput(String(action.value))
+          : action.value;
+        return { ...state, answers: { ...state.answers, [action.questionId]: value } };
+      }
       case "TOGGLE_MARK":
         return {
           ...state,
