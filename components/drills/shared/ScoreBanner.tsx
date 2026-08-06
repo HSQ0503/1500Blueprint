@@ -1,20 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { scoreToneFor, type ScoreTone } from "@/lib/drills/scoreTone";
 import { label } from "./ui";
 
 // A report-card style result header: a left accent rule, a large score over
 // 100, the verdict, and a thin grade bar. Number and bar count up on mount
 // (instantly under prefers-reduced-motion). Color shifts with the score.
-function toneFor(score: number) {
-  if (score >= 100)
-    return { accent: "border-l-success", text: "text-success-600", fill: "bg-success", tint: "bg-success-bg" };
-  if (score >= 50)
-    return { accent: "border-l-flag", text: "text-flag", fill: "bg-flag", tint: "bg-flag-bg" };
-  return { accent: "border-l-danger", text: "text-danger-600", fill: "bg-danger", tint: "bg-danger-bg" };
-}
+const TONES: Record<ScoreTone, { accent: string; text: string; fill: string; tint: string }> = {
+  success: { accent: "border-l-success", text: "text-success-600", fill: "bg-success", tint: "bg-success-bg" },
+  warning: { accent: "border-l-flag", text: "text-flag", fill: "bg-flag", tint: "bg-flag-bg" },
+  danger: { accent: "border-l-danger", text: "text-danger-600", fill: "bg-danger", tint: "bg-danger-bg" },
+};
 
-export function ScoreBanner({ score, verdict }: { score: number; verdict: string }) {
+export function ScoreBanner({
+  score,
+  verdict,
+  successThreshold = 100,
+}: {
+  score: number;
+  verdict: string;
+  successThreshold?: number;
+}) {
   const [shown, setShown] = useState(0);
 
   useEffect(() => {
@@ -33,7 +40,7 @@ export function ScoreBanner({ score, verdict }: { score: number; verdict: string
     return () => cancelAnimationFrame(raf);
   }, [score]);
 
-  const tone = toneFor(score);
+  const tone = TONES[scoreToneFor(score, successThreshold)];
 
   return (
     <div className="animate-pop-in flex h-full flex-col overflow-hidden rounded-xl border border-navy/15 bg-white">
