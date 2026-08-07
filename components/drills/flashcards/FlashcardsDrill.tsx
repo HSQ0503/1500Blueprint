@@ -12,8 +12,8 @@ type Phase = "overview" | "review" | "summary";
 type Rating = "again" | "good" | "easy";
 
 export function FlashcardsDrill({ deck }: { deck?: Flashcard[] }) {
-  const cards = deck?.length ? deck : DECK;
-  const dueCount = deck?.length ? deck.length : DUE_COUNT;
+  const cards = deck ?? DECK;
+  const dueCount = deck ? deck.length : DUE_COUNT;
 
   const [phase, setPhase] = useState<Phase>("overview");
   const [index, setIndex] = useState(0);
@@ -120,7 +120,7 @@ function Overview({
       </div>
 
       <div className="mt-5 flex gap-3">
-        <button type="button" onClick={onStart} className={primaryBtn}>
+        <button type="button" onClick={onStart} disabled={deckSize === 0} className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-45`}>
           Start review
         </button>
         <button type="button" className={secondaryBtn}>
@@ -128,6 +128,11 @@ function Overview({
           Manage deck
         </button>
       </div>
+      {deckSize === 0 ? (
+        <p className="mt-4 rounded-card border border-navy/10 bg-white px-4 py-3 text-sm text-navy/55">
+          Your deck is empty. Save a word in the Vocab Drill, or turn on auto-add so missed words appear here.
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { isAdminEmail } from "@/lib/auth/admin";
 import { getHubState, needsOnboarding } from "@/lib/gamification/state";
 import { loadGrammarMastery } from "@/lib/drills/progress";
 import { isDrillUnderConstruction, NON_GRAMMAR_DRILLS_LOCKED } from "@/lib/flags";
+import { loadVocabDashboard } from "@/lib/drills/vocab.server";
 
 export const metadata = {
   title: "Practice Drills — 1500 SAT Blueprint",
@@ -22,10 +23,11 @@ export default async function DrillsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [hub, showOnboarding, grammarMastery] = await Promise.all([
+  const [hub, showOnboarding, grammarMastery, vocabState] = await Promise.all([
     getHubState(session.email),
     needsOnboarding(session.email),
     loadGrammarMastery(session.email),
+    loadVocabDashboard(session.email),
   ]);
   const nav = {
     streak: hub.player.streak,
@@ -56,6 +58,12 @@ export default async function DrillsPage() {
 
       <DrillCatalog
         grammarMastery={grammarMastery}
+        vocabStats={{
+          words: vocabState.totalWords,
+          mastered: vocabState.masteredCount,
+          bestStreak: vocabState.bestStreak,
+          flashcards: vocabState.flashcardCount,
+        }}
         streak={hub.player.streak}
         readingLocked={isDrillUnderConstruction("reading")}
         nonGrammarDrillsLocked={NON_GRAMMAR_DRILLS_LOCKED}

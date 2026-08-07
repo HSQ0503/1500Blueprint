@@ -18,8 +18,10 @@ import type {
   SatSkill,
   WalkthroughKind,
   WalkthroughStep,
+  VocabContent,
 } from "./types";
 import type { Accent, AiRole } from "./types";
+import { buildVocabQuestions, type VocabImportEntry } from "./vocabImport";
 
 // ---- Row shapes (as returned by PostgREST) -------------------------------
 
@@ -330,4 +332,88 @@ export async function replaceWalkthrough(
 export async function deleteQuestion(id: string): Promise<void> {
   const { error } = await supabaseAdmin().from("drill_questions").delete().eq("id", id);
   if (error) throw new Error(`deleteQuestion failed: ${error.message}`);
+}
+
+export type VocabImportOutcome = {
+  imported: number;
+  inserted: number;
+  updated: number;
+};
+
+function chunks<T>(items: readonly T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
+}
+
+// Bulk-create or refresh vocab questions by their correct word. Imported rows
+// are published immediately so a 1,000+ word source can become the live pool
+// in one admin operation without creating duplicates on subsequent uploads.
+export async function importVocabEntries(
+  entries: readonly VocabImportEntry[],
+  createdBy: string,
+): Promise<VocabImportOutcome> {
+  const built = buildVocabQuestions(entries);
+  const db = supabaseAdmin();
+  const existing: { id: string; content: Record<string, unknown> | null }[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await db
+      .from("drill_questions")
+      .select("id,content")
+      .eq("drill_slug", "vocab")
+      .order("created_at")
+      .range(from, from + pageSize - 1)
+      .returns<{ id: string; content: Record<string, unknown> | null }[]>();
+    if (error) throw new Error(`Could not inspect existing vocab words: ${error.message}`);
+    existing.push(...(data ?? []));
+    if ((data?.length ?? 0) < pageSize) break;
+  }
+
+  const existingByWord = new Map<string, string>();
+  for (const row of existing) {
+    const content = (row.content ?? {}) as VocabContent;
+    const word = Array.isArray(content.options) ? content.options[content.correctIndex] : undefined;
+    if (word) existingByWord.set(word.toLocaleLowerCase(), row.id);
+  }
+
+  const updates: Record<string, unknown>[] = [];
+  const inserts: Record<string, unknown>[] = [];
+  for (const question of built) {
+    const content: VocabContent = {
+      pos: question.pos,
+      definition: question.definition,
+      example: question.example,
+      options: question.options,
+      correctIndex: question.correctIndex,
+    };
+    const shared = {
+      drill_slug: "vocab",
+      answer_type: "mc_single",
+      difficulty: "medium",
+      stem: question.word,
+      content,
+      status: "published",
+    };
+    const id = existingByWord.get(question.word.toLocaleLowerCase());
+    if (id) updates.push({ id, ...shared });
+    else inserts.push({ ...shared, created_by: createdBy });
+  }
+
+  for (const batch of chunks(updates, 200)) {
+    const { error } = await db.from("drill_questions").upsert(batch, { onConflict: "id" });
+    if (error) throw new Error(`Could not update vocab questions: ${error.message}`);
+  }
+  for (const batch of chunks(inserts, 200)) {
+    const { error } = await db.from("drill_questions").insert(batch);
+    if (error) throw new Error(`Could not insert vocab questions: ${error.message}`);
+  }
+
+  return {
+    imported: built.length,
+    inserted: inserts.length,
+    updated: updates.length,
+  };
 }

@@ -6,6 +6,7 @@ export type VocabItem = {
   id: string;
   pos: string;
   definition: string;
+  example?: string;
   options: string[];
   correct: string;
 };

@@ -77,6 +77,7 @@ export function toVocabItems(qs: DrillQuestion[]): VocabItem[] {
       id: q.id,
       pos: c.pos ?? "",
       definition: c.definition ?? "",
+      example: c.example ?? "",
       options: c.options,
       correct,
     });

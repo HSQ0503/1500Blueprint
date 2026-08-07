@@ -4,6 +4,7 @@ import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { getDrill } from "@/lib/drills/admin-queries";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { DrillSettingsForm } from "@/components/admin/DrillSettingsForm";
+import { VocabBulkImport } from "@/components/admin/VocabBulkImport";
 
 // Per-drill settings editor. Loads the drill config, then renders the form.
 export default async function DrillSettingsPage({
@@ -29,6 +30,7 @@ export default async function DrillSettingsPage({
         </Link>
       </div>
       <DrillSettingsForm drill={drill} />
+      {slug === "vocab" ? <VocabBulkImport /> : null}
     </AdminShell>
   );
 }

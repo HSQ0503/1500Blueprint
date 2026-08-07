@@ -22,6 +22,7 @@ import {
 import { DrillEmpty } from "@/components/drills/shared/DrillEmpty";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isDrillUnderConstruction } from "@/lib/flags";
+import { loadVocabDashboard, loadVocabFlashcards } from "@/lib/drills/vocab.server";
 
 // Next 16: route params and searchParams are async.
 export default async function DrillPage({
@@ -87,12 +88,27 @@ export default async function DrillPage({
       return <WordScanDrill mode={sp.mode === "bad-mold" ? "bad-mold" : "ceased"} />;
     case "vocab": {
       const raw = await loadDrillQuestions("vocab");
-      const ordered = email ? await selectForStudent("vocab", email, raw) : raw;
+      const [ordered, vocabState] = email
+        ? await Promise.all([
+            selectForStudent("vocab", email, raw),
+            loadVocabDashboard(email),
+          ])
+        : [raw, undefined];
       const items = toVocabItems(ordered);
-      return <VocabDrill items={items} />;
+      if (items.length === 0) return <DrillEmpty title="Vocab Drill" eyebrow="Vocabulary" />;
+      return (
+        <VocabDrill
+          items={items}
+          wordBank={toVocabItems(raw)}
+          initialState={vocabState}
+          initialShowProgress={sp.view === "progress"}
+        />
+      );
     }
     case "flashcards": {
-      const deck = toFlashcards(await loadDrillQuestions("flashcards"));
+      const deck = email
+        ? await loadVocabFlashcards(email)
+        : toFlashcards(await loadDrillQuestions("flashcards"));
       return <FlashcardsDrill deck={deck} />;
     }
     case "ai-math":

@@ -62,12 +62,14 @@ function LockableCard({ locked, title, children }: { locked: boolean; title: str
 
 export function DrillCatalog({
   grammarMastery,
+  vocabStats,
   streak,
   readingLocked,
   nonGrammarDrillsLocked,
   isAdmin,
 }: {
   grammarMastery: GrammarMasteryState;
+  vocabStats: { words: number; mastered: number; bestStreak: number; flashcards: number };
   streak: number;
   readingLocked: boolean;
   nonGrammarDrillsLocked: boolean;
@@ -316,13 +318,13 @@ export function DrillCatalog({
           </p>
           <div className="mt-4 flex gap-4 text-xs text-navy/55">
             <span>
-              <strong className="text-navy">{drillStats.vocab.words}</strong> words
+              <strong className="text-navy">{vocabStats.words}</strong> words
             </span>
             <span>
-              <strong className="text-navy">{drillStats.vocab.mastered}</strong> mastered
+              <strong className="text-navy">{vocabStats.mastered}</strong> mastered
             </span>
             <span>
-              <strong className="text-navy">{drillStats.vocab.bestStreak}</strong> best streak
+              <strong className="text-navy">{vocabStats.bestStreak}</strong> best streak
             </span>
           </div>
           <div className="mt-auto flex gap-2.5 pt-[18px]">
@@ -330,7 +332,7 @@ export function DrillCatalog({
               <PlayIcon className="h-3.5 w-3.5" />
               Start · +{drillStats.vocab.xpReward} XP
             </Link>
-            <Link href={HREF.vocab} className={ghostBtn}>
+            <Link href={`${HREF.vocab}?view=progress`} className={ghostBtn}>
               Progress
             </Link>
           </div>
@@ -353,10 +355,10 @@ export function DrillCatalog({
           </p>
           <div className="mt-4 flex gap-4 text-xs text-navy/55">
             <span>
-              <strong className="text-navy">{drillStats.flashcards.inDeck}</strong> in deck
+              <strong className="text-navy">{vocabStats.flashcards}</strong> in deck
             </span>
             <span>
-              <strong className="text-navy">{drillStats.flashcards.due}</strong> due
+              <strong className="text-navy">{vocabStats.flashcards}</strong> due
             </span>
           </div>
           <div className="mt-auto flex gap-2.5 pt-[18px]">

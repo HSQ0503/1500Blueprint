@@ -1,56 +1,90 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DrillShell } from "../shared/DrillShell";
 import { ProgressBar, formatClock } from "../shared/Hud";
 import { TrophyIcon, FlameIcon } from "../shared/icons";
-import {
-  BookmarkIcon,
-  BookmarkFilledIcon,
-  ClockIcon,
-  CloseIcon,
-} from "@/components/test/icons";
+import { ClockIcon, CloseIcon } from "@/components/test/icons";
 import { vocabItems, type VocabItem } from "./mock";
 import { VocabQuestion } from "./VocabQuestion";
-import { VocabSummary } from "./VocabSummary";
+import { VocabSummary, type VocabSessionAnswer } from "./VocabSummary";
+import { VocabProgressPanel } from "./VocabProgressPanel";
+import {
+  VOCAB_MASTERY_TARGET,
+  advanceVocabProgress,
+  selectVocabSession,
+  type VocabAnswerResult,
+  type VocabDashboardState,
+  type VocabWordProgress,
+} from "@/lib/drills/vocabProgress";
 
-const ADVANCE_DELAY = 850;
+const ADVANCE_DELAY = 1400;
 
-export function VocabDrill({ items }: { items?: VocabItem[] }) {
+const EMPTY_DASHBOARD: VocabDashboardState = {
+  totalWords: 0,
+  masteredCount: 0,
+  currentStreak: 0,
+  bestStreak: 0,
+  autoAddFlashcards: true,
+  savedQuestionIds: [],
+  flashcardCount: 0,
+  words: [],
+  attempts: {
+    last3: { accuracy: null, averageSeconds: null, sessions: 0 },
+    last10: { accuracy: null, averageSeconds: null, sessions: 0 },
+    all: { accuracy: null, averageSeconds: null, sessions: 0 },
+  },
+};
+
+export function VocabDrill({
+  items,
+  wordBank,
+  initialState,
+  initialShowProgress = false,
+}: {
+  items?: VocabItem[];
+  wordBank?: VocabItem[];
+  initialState?: VocabDashboardState;
+  initialShowProgress?: boolean;
+}) {
+  const data = items?.length ? items : vocabItems;
+  const allWords = wordBank?.length ? wordBank : data;
+  const tracked = Boolean(items?.length && initialState);
+  const dashboard = initialState ?? { ...EMPTY_DASHBOARD, totalWords: data.length };
+  const [sessionStart, setSessionStart] = useState(0);
+  const sessionItems = useMemo(
+    () => selectVocabSession(data, sessionStart),
+    [data, sessionStart],
+  );
+  const wordToQuestionId = useMemo(
+    () => new Map(allWords.map((entry) => [entry.correct.toLocaleLowerCase(), entry.id])),
+    [allWords],
+  );
+
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
-  const [mastered, setMastered] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
+  const [masteredCount, setMasteredCount] = useState(dashboard.masteredCount);
+  const [streak, setStreak] = useState(dashboard.currentStreak);
+  const [bestStreak, setBestStreak] = useState(dashboard.bestStreak);
   const [seconds, setSeconds] = useState(0);
-  const [saved, setSaved] = useState<Record<string, boolean>>({});
+  const [savedIds, setSavedIds] = useState(() => new Set(dashboard.savedQuestionIds));
+  const [autoAdd, setAutoAdd] = useState(dashboard.autoAddFlashcards);
+  const [wordProgress, setWordProgress] = useState(dashboard.words);
+  const [answers, setAnswers] = useState<VocabSessionAnswer[]>([]);
   const [done, setDone] = useState(false);
-
+  const [showProgress, setShowProgress] = useState(initialShowProgress);
+  const [error, setError] = useState<string | null>(null);
+  const [settingsPending, setSettingsPending] = useState(false);
+  const sessionTokenRef = useRef(crypto.randomUUID());
   const advanceRef = useRef<number | null>(null);
-  const data = items?.length ? items : vocabItems;
-  // Only DB-backed items have real ids to record; the offline mock isn't tracked.
-  const tracked = Boolean(items?.length);
-  const total = data.length;
-  const item = data[index];
+  const total = sessionItems.length;
+  const item = sessionItems[index];
 
-  // Fire-and-forget: record this word as seen (mastered when correct) so it stops
-  // being re-fed and appears in History.
-  function markSeen(questionId: string, wasCorrect: boolean) {
-    if (!tracked) return;
-    fetch("/api/drills/progress", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ drillSlug: "vocab", questionId, correct: wasCorrect }),
-      keepalive: true,
-    }).catch(() => {});
-  }
-
-  // Count-up timer: runs while the session is active.
   useEffect(() => {
-    if (done) return;
-    const id = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    if (done || showProgress) return;
+    const id = window.setInterval(() => setSeconds((value) => value + 1), 1000);
     return () => window.clearInterval(id);
-  }, [done]);
+  }, [done, showProgress]);
 
   useEffect(() => {
     return () => {
@@ -58,51 +92,204 @@ export function VocabDrill({ items }: { items?: VocabItem[] }) {
     };
   }, []);
 
-  function handleSelect(word: string) {
-    if (selected !== null) return;
-    setSelected(word);
+  function applyWordProgress(question: VocabItem, result: VocabAnswerResult) {
+    setWordProgress((current) => {
+      const next: VocabWordProgress = {
+        questionId: question.id,
+        word: result.correctWord,
+        correctStreak: result.wordCorrectStreak,
+        mastered: result.mastered,
+      };
+      const without = current.filter((entry) => entry.questionId !== question.id);
+      return [next, ...without];
+    });
+  }
 
-    const correct = word === item.correct;
-    markSeen(item.id, correct);
-    if (correct) {
-      setMastered((m) => m + 1);
-      setStreak((prev) => {
-        const next = prev + 1;
-        setBestStreak((b) => Math.max(b, next));
-        return next;
+  async function finishSession(correct: number, durationSeconds: number) {
+    if (!tracked || total !== 7) return;
+    try {
+      const response = await fetch("/api/drills/vocab/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          correct,
+          total,
+          durationSeconds,
+          clientToken: sessionTokenRef.current,
+        }),
+        keepalive: true,
       });
-    } else {
-      setStreak(0);
+      if (!response.ok) throw new Error("Session progress could not be saved.");
+    } catch {
+      setError("Your answers are complete, but the session summary could not be saved. Refresh to retry.");
     }
+  }
+
+  async function handleSelect(word: string) {
+    if (selected !== null || !item) return;
+    setSelected(word);
+    setError(null);
+
+    let result: VocabAnswerResult;
+    if (tracked) {
+      try {
+        const response = await fetch("/api/drills/vocab/answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ questionId: item.id, selectedWord: word }),
+        });
+        const body = (await response.json()) as VocabAnswerResult & { error?: string };
+        if (!response.ok) throw new Error(body.error || "Could not save this answer.");
+        result = body;
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Could not save this answer.");
+        setSelected(null);
+        return;
+      }
+    } else {
+      const correct = word === item.correct;
+      const previous = wordProgress.find((entry) => entry.questionId === item.id);
+      const next = advanceVocabProgress(
+        {
+          wordCorrectStreak: previous?.correctStreak ?? 0,
+          currentStreak: streak,
+          bestStreak,
+          mastered: previous?.mastered ?? false,
+        },
+        correct,
+      );
+      result = {
+        correct,
+        correctWord: item.correct,
+        wordCorrectStreak: next.wordCorrectStreak,
+        mastered: next.mastered,
+        masteredCount: masteredCount + (next.mastered && !previous?.mastered ? 1 : 0),
+        currentStreak: next.currentStreak,
+        bestStreak: next.bestStreak,
+        autoAdded: !correct && autoAdd,
+      };
+    }
+
+    setMasteredCount(result.masteredCount);
+    setStreak(result.currentStreak);
+    setBestStreak(result.bestStreak);
+    applyWordProgress(item, result);
+    if (result.autoAdded) setSavedIds((current) => new Set(current).add(item.id));
+
+    const answer: VocabSessionAnswer = {
+      questionId: item.id,
+      pos: item.pos,
+      definition: item.definition,
+      selectedWord: word,
+      correctWord: result.correctWord,
+      correct: result.correct,
+      correctStreak: result.wordCorrectStreak,
+      mastered: result.mastered,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
 
     advanceRef.current = window.setTimeout(() => {
       if (index + 1 >= total) {
         setDone(true);
+        void finishSession(nextAnswers.filter((entry) => entry.correct).length, seconds);
       } else {
-        setIndex((i) => i + 1);
+        setIndex((value) => value + 1);
         setSelected(null);
       }
     }, ADVANCE_DELAY);
   }
 
-  function toggleSave(word: string) {
-    setSaved((prev) => ({ ...prev, [word]: !prev[word] }));
+  async function toggleSave(word: string) {
+    const questionId = wordToQuestionId.get(word.toLocaleLowerCase());
+    if (!questionId) {
+      setError(`“${word}” is not available as a flashcard yet.`);
+      return;
+    }
+    const wasSaved = savedIds.has(questionId);
+    setSavedIds((current) => {
+      const next = new Set(current);
+      if (wasSaved) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
+    if (!tracked) return;
+    try {
+      const response = await fetch("/api/drills/vocab/flashcards", {
+        method: wasSaved ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId }),
+      });
+      if (!response.ok) throw new Error();
+    } catch {
+      setSavedIds((current) => {
+        const next = new Set(current);
+        if (wasSaved) next.add(questionId);
+        else next.delete(questionId);
+        return next;
+      });
+      setError("The flashcard change could not be saved.");
+    }
+  }
+
+  async function toggleAutoAdd() {
+    if (settingsPending) return;
+    const next = !autoAdd;
+    setAutoAdd(next);
+    if (!tracked) return;
+    setSettingsPending(true);
+    try {
+      const response = await fetch("/api/drills/vocab/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoAddFlashcards: next }),
+      });
+      if (!response.ok) throw new Error();
+    } catch {
+      setAutoAdd(!next);
+      setError("The auto-add setting could not be saved.");
+    } finally {
+      setSettingsPending(false);
+    }
   }
 
   function restart() {
     if (advanceRef.current !== null) window.clearTimeout(advanceRef.current);
+    setSessionStart((value) => (value + 7) % Math.max(1, data.length));
     setIndex(0);
     setSelected(null);
-    setMastered(0);
-    setStreak(0);
-    setBestStreak(0);
     setSeconds(0);
-    setSaved({});
+    setAnswers([]);
     setDone(false);
+    setError(null);
+    sessionTokenRef.current = crypto.randomUUID();
   }
 
-  const answered = done ? total : selected !== null ? index + 1 : index;
-  const savedCount = Object.values(saved).filter(Boolean).length;
+  const savedByWord = Object.fromEntries(
+    allWords.map((entry) => [
+      entry.correct,
+      savedIds.has(entry.id),
+    ]),
+  );
+
+  if (showProgress) {
+    return (
+      <DrillShell title="Vocab Progress" eyebrow="Vocabulary" exitHref="/drills">
+        <VocabProgressPanel
+          totalWords={dashboard.totalWords || data.length}
+          masteredCount={masteredCount}
+          currentStreak={streak}
+          bestStreak={bestStreak}
+          autoAdd={autoAdd}
+          words={wordProgress}
+          attempts={dashboard.attempts}
+          settingsPending={settingsPending}
+          onToggleAutoAdd={toggleAutoAdd}
+          onStart={() => setShowProgress(false)}
+        />
+      </DrillShell>
+    );
+  }
 
   if (done) {
     return (
@@ -113,11 +300,10 @@ export function VocabDrill({ items }: { items?: VocabItem[] }) {
         right={<ExitButton href="/drills" />}
       >
         <VocabSummary
-          total={total}
-          mastered={mastered}
-          bestStreak={bestStreak}
+          answers={answers}
           seconds={seconds}
-          savedCount={savedCount}
+          savedCount={savedIds.size}
+          error={error}
           onPracticeAgain={restart}
         />
       </DrillShell>
@@ -130,6 +316,7 @@ export function VocabDrill({ items }: { items?: VocabItem[] }) {
       Time: {formatClock(seconds)}
     </span>
   );
+  const answered = selected !== null ? index + 1 : index;
 
   return (
     <DrillShell
@@ -140,10 +327,33 @@ export function VocabDrill({ items }: { items?: VocabItem[] }) {
       right={<ExitButton href="/drills" />}
     >
       <div className="-mt-2 mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-sm font-semibold text-navy">
             Question {index + 1} of {total}
           </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowProgress(true)}
+              className="text-xs font-semibold text-brand-600 hover:text-brand"
+            >
+              View progress
+            </button>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoAdd}
+              disabled={settingsPending}
+              onClick={toggleAutoAdd}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-navy/65 disabled:opacity-50"
+            >
+              Auto-add to flashcards
+              <span className={`relative h-5 w-9 rounded-full transition-colors ${autoAdd ? "bg-success" : "bg-navy/20"}`}>
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${autoAdd ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+              </span>
+              <span className={autoAdd ? "text-success-600" : "text-navy/45"}>{autoAdd ? "ON" : "OFF"}</span>
+            </button>
+          </div>
         </div>
         <div className="mt-2.5">
           <ProgressBar value={answered} max={total} />
@@ -151,19 +361,28 @@ export function VocabDrill({ items }: { items?: VocabItem[] }) {
         <div className="mt-3 flex items-center gap-5 border-t border-navy/10 pt-3">
           <span className="inline-flex items-center gap-1.5 text-sm text-navy/70">
             <TrophyIcon className="h-4 w-4 text-gold-600" />
-            Words Mastered: <span className="font-semibold text-navy">{mastered}</span>
+            Words Mastered: <span className="font-semibold text-navy">{masteredCount}</span>
           </span>
           <span className="inline-flex items-center gap-1.5 text-sm text-navy/70">
             <FlameIcon className="h-4 w-4 text-flag" />
             Streak: <span className="font-semibold text-navy">{streak}</span>
           </span>
+          <span className="hidden text-xs text-navy/45 sm:inline">
+            {VOCAB_MASTERY_TARGET} correct in a row masters a word
+          </span>
         </div>
       </div>
+
+      {error ? (
+        <div role="alert" className="mb-4 rounded-card border border-danger/25 bg-danger-bg px-4 py-3 text-sm text-danger-600">
+          {error}
+        </div>
+      ) : null}
 
       <VocabQuestion
         item={item}
         selected={selected}
-        saved={saved}
+        saved={savedByWord}
         onSelect={handleSelect}
         onToggleSave={toggleSave}
       />
@@ -171,38 +390,15 @@ export function VocabDrill({ items }: { items?: VocabItem[] }) {
   );
 }
 
-// Bookmark + close cluster mirroring the reference top-right controls. The
-// bookmark saves the whole set for later; close exits to the drills index.
 function ExitButton({ href }: { href: string }) {
-  const [setSaved, setSetSaved] = useState(false);
   return (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => setSetSaved((v) => !v)}
-        aria-pressed={setSaved}
-        aria-label={setSaved ? "Remove drill from saved" : "Save drill"}
-        title={setSaved ? "Saved" : "Save this drill"}
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-card border transition-colors ${
-          setSaved
-            ? "border-gold/60 bg-gold/10 text-gold-600"
-            : "border-navy/15 text-navy/55 hover:bg-navy/5 hover:text-navy"
-        }`}
-      >
-        {setSaved ? (
-          <BookmarkFilledIcon className="h-5 w-5" />
-        ) : (
-          <BookmarkIcon className="h-5 w-5" />
-        )}
-      </button>
-      <a
-        href={href}
-        aria-label="Exit drill"
-        title="Exit"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-card border border-navy/15 text-navy/55 transition-colors hover:bg-navy/5 hover:text-navy"
-      >
-        <CloseIcon className="h-5 w-5" />
-      </a>
-    </div>
+    <a
+      href={href}
+      aria-label="Exit drill"
+      title="Exit"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-card border border-navy/15 text-navy/55 transition-colors hover:bg-navy/5 hover:text-navy"
+    >
+      <CloseIcon className="h-5 w-5" />
+    </a>
   );
 }

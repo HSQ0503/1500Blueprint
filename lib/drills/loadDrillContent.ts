@@ -74,19 +74,25 @@ function toQuestion(r: QuestionRow): DrillQuestion {
 
 // Load all published questions for one drill (with their walkthrough steps).
 export async function loadDrillQuestions(drillSlug: DrillSlug): Promise<DrillQuestion[]> {
-  const { data, error } = await supabase
-    .from("drill_questions")
-    .select(
-      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_at,updated_at," +
-        "drill_walkthrough_steps(id,position,kind,text,detail)",
-    )
-    .eq("drill_slug", drillSlug)
-    .eq("status", "published")
-    .order("created_at");
-  if (error) {
-    throw new Error(`Could not load ${drillSlug} questions [${error.code}]: ${error.message}`);
+  const rows: QuestionRow[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("drill_questions")
+      .select(
+        "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_at,updated_at," +
+          "drill_walkthrough_steps(id,position,kind,text,detail)",
+      )
+      .eq("drill_slug", drillSlug)
+      .eq("status", "published")
+      .order("created_at")
+      .range(from, from + pageSize - 1);
+    if (error) {
+      throw new Error(`Could not load ${drillSlug} questions [${error.code}]: ${error.message}`);
+    }
+    const page = (data ?? []) as unknown as QuestionRow[];
+    rows.push(...page);
+    if (page.length < pageSize) break;
   }
-  if (!data) return [];
-  // supabase-js infers the nested relation loosely; cast through unknown.
-  return (data as unknown as QuestionRow[]).map(toQuestion);
+  return rows.map(toQuestion);
 }

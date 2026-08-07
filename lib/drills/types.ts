@@ -97,6 +97,7 @@ export type AiMathContent =
 export type VocabContent = {
   pos: string;
   definition: string;
+  example?: string;
   options: string[];
   correctIndex: number; // index (0-3) of the correct option; stable across text edits/duplicates
 };
