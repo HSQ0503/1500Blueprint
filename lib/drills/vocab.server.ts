@@ -4,8 +4,10 @@ import type { Flashcard } from "@/components/drills/flashcards/mock";
 import { awardDrill, type AwardOutcome } from "@/lib/gamification/state";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { VocabContent } from "./types";
+import type { VocabImportEntry } from "./vocabImport";
 import {
   advanceVocabProgress,
+  nextVocabFlashcardPosition,
   summarizeVocabAttempts,
   type VocabAnswerResult,
   type VocabDashboardState,
@@ -17,6 +19,9 @@ type VocabQuestionRow = { id: string; content: Record<string, unknown> | null };
 type VocabSetRow = { id: string; description: string | null };
 type VocabCardRow = { id: string; position: number; term: string; definition: string };
 type StoredVocabState = { currentStreak: number; bestStreak: number; autoAdd: boolean };
+
+export type VocabFlashcard = Flashcard & { prioritized: boolean };
+export type VocabFlashcardImportOutcome = { imported: number; inserted: number; updated: number };
 
 const DEFAULT_STATE: StoredVocabState = { currentStreak: 0, bestStreak: 0, autoAdd: true };
 
@@ -52,7 +57,7 @@ function parseState(description: string | null): StoredVocabState {
     : DEFAULT_STATE;
 }
 
-function encodeDefinition(content: VocabContent): string {
+function encodeDefinition(content: { definition: string; pos?: string; example?: string }): string {
   const lines = [`Definition: ${content.definition ?? ""}`];
   if (content.pos) lines.unshift(`Part of speech: ${content.pos}`);
   if (content.example) lines.push(`Example: ${content.example}`);
@@ -133,7 +138,21 @@ async function loadCards(setId: string): Promise<VocabCardRow[]> {
   return data ?? [];
 }
 
-async function saveQuestionAsFlashcard(email: string, question: VocabQuestionRow): Promise<void> {
+async function loadCardPositions(setId: string): Promise<number[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("flashcard_cards")
+    .select("position")
+    .eq("set_id", setId)
+    .returns<{ position: number }[]>();
+  if (error) throw databaseError("Could not order Vocab Flashcards", error);
+  return (data ?? []).map((row) => row.position);
+}
+
+async function saveQuestionAsFlashcard(
+  email: string,
+  question: VocabQuestionRow,
+  prioritized: boolean,
+): Promise<void> {
   const set = await ensureVocabSet(email);
   const content = vocabContent(question);
   const word = correctWord(question);
@@ -141,33 +160,33 @@ async function saveQuestionAsFlashcard(email: string, question: VocabQuestionRow
   const db = supabaseAdmin();
   const { data: existing, error: existingError } = await db
     .from("flashcard_cards")
-    .select("id")
+    .select("id,position")
     .eq("set_id", set.id)
     .ilike("term", word)
     .limit(1)
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; position: number }>();
   if (existingError) throw databaseError("Could not inspect Vocab Flashcards", existingError);
   if (existing) {
+    const position =
+      prioritized && existing.position >= 0
+        ? nextVocabFlashcardPosition(await loadCardPositions(set.id), true)
+        : existing.position;
     const { error } = await db
       .from("flashcard_cards")
-      .update({ term: word, definition: encodeDefinition(content) })
+      .update({ term: word, definition: encodeDefinition(content), position })
       .eq("id", existing.id)
       .eq("set_id", set.id);
     if (error) throw databaseError("Could not update the vocab flashcard", error);
     return;
   }
 
-  const { data: last, error: lastError } = await db
-    .from("flashcard_cards")
-    .select("position")
-    .eq("set_id", set.id)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle<{ position: number }>();
-  if (lastError) throw databaseError("Could not prepare the vocab flashcard", lastError);
+  const position = nextVocabFlashcardPosition(
+    await loadCardPositions(set.id),
+    prioritized,
+  );
   const { error } = await db.from("flashcard_cards").insert({
     set_id: set.id,
-    position: (last?.position ?? 0) + 1,
+    position,
     term: word,
     definition: encodeDefinition(content),
   });
@@ -244,6 +263,11 @@ export async function loadVocabDashboard(email: string): Promise<VocabDashboardS
     bestStreak: state.bestStreak,
     autoAddFlashcards: state.autoAdd,
     savedQuestionIds: cards.flatMap((card) => {
+      const id = questionIdByWord.get(card.term.toLocaleLowerCase());
+      return id ? [id] : [];
+    }),
+    bookmarkedQuestionIds: cards.flatMap((card) => {
+      if (card.position >= 0) return [];
       const id = questionIdByWord.get(card.term.toLocaleLowerCase());
       return id ? [id] : [];
     }),
@@ -327,7 +351,7 @@ export async function recordVocabAnswer(
 
   let autoAdded = false;
   if (!isCorrect && stored.autoAdd) {
-    await saveQuestionAsFlashcard(email, question);
+    await saveQuestionAsFlashcard(email, question, false);
     autoAdded = true;
   }
   const masteredRes = await db
@@ -357,7 +381,7 @@ export async function updateVocabAutoAdd(email: string, enabled: boolean): Promi
 }
 
 export async function saveVocabFlashcard(email: string, questionId: string): Promise<void> {
-  await saveQuestionAsFlashcard(email, await loadQuestion(questionId));
+  await saveQuestionAsFlashcard(email, await loadQuestion(questionId), true);
 }
 
 export async function removeVocabFlashcard(email: string, questionId: string): Promise<void> {
@@ -373,13 +397,79 @@ export async function removeVocabFlashcard(email: string, questionId: string): P
   if (error) throw databaseError("Could not remove the vocab flashcard", error);
 }
 
-export async function loadVocabFlashcards(email: string): Promise<Flashcard[]> {
+export async function loadVocabFlashcards(email: string): Promise<VocabFlashcard[]> {
   const set = await loadVocabSet(email);
   if (!set) return [];
   return (await loadCards(set.id)).map((card) => ({
     word: card.term,
+    prioritized: card.position < 0,
     ...decodeDefinition(card.definition),
   }));
+}
+
+function chunks<T>(items: readonly T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
+}
+
+export async function importVocabFlashcards(
+  email: string,
+  entries: readonly VocabImportEntry[],
+): Promise<VocabFlashcardImportOutcome> {
+  const set = await ensureVocabSet(email);
+  const db = supabaseAdmin();
+  const existing = await loadCards(set.id);
+  const byTerm = new Map(existing.map((card) => [card.term.toLocaleLowerCase(), card]));
+  let nextPosition = nextVocabFlashcardPosition(
+    existing.map((card) => card.position),
+    false,
+  );
+  const updates: {
+    id: string;
+    set_id: string;
+    position: number;
+    term: string;
+    definition: string;
+  }[] = [];
+  const inserts: { set_id: string; position: number; term: string; definition: string }[] = [];
+
+  for (const entry of entries) {
+    const card = byTerm.get(entry.word.toLocaleLowerCase());
+    if (card) {
+      updates.push({
+        id: card.id,
+        set_id: set.id,
+        position: card.position,
+        term: entry.word,
+        definition: encodeDefinition(entry),
+      });
+    } else {
+      inserts.push({
+        set_id: set.id,
+        position: nextPosition,
+        term: entry.word,
+        definition: encodeDefinition(entry),
+      });
+      nextPosition += 1;
+    }
+  }
+
+  for (const batch of chunks(updates, 200)) {
+    const { error } = await db.from("flashcard_cards").upsert(batch, { onConflict: "id" });
+    if (error) throw databaseError("Could not update imported flashcards", error);
+  }
+  for (const batch of chunks(inserts, 200)) {
+    const { error } = await db.from("flashcard_cards").insert(batch);
+    if (error) throw databaseError("Could not import flashcards", error);
+  }
+  return {
+    imported: entries.length,
+    inserted: inserts.length,
+    updated: updates.length,
+  };
 }
 
 export async function completeVocabSession(

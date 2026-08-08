@@ -19,6 +19,16 @@ test("CSV imports quoted definitions and normalized headers", () => {
   ]);
 });
 
+test("CSV imports exported with a UTF-8 byte-order mark", () => {
+  const result = parseVocabImport(
+    "\uFEFFword,definition,pos,example\npragmatic,focused on practical results,adj.,a pragmatic plan",
+    "excel-export.csv",
+  );
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.entries[0]?.word, "pragmatic");
+});
+
 test("TSV and pipe-delimited TXT imports are accepted", () => {
   const tsv = parseVocabImport("word\tdefinition\tpos\nephemeral\tlasting briefly\tadj.", "words.tsv");
   const txt = parseVocabImport("assuage | to make less intense | v.", "words.txt");

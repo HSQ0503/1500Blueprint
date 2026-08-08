@@ -27,6 +27,7 @@ const EMPTY_DASHBOARD: VocabDashboardState = {
   bestStreak: 0,
   autoAddFlashcards: true,
   savedQuestionIds: [],
+  bookmarkedQuestionIds: [],
   flashcardCount: 0,
   words: [],
   attempts: {
@@ -68,6 +69,10 @@ export function VocabDrill({
   const [bestStreak, setBestStreak] = useState(dashboard.bestStreak);
   const [seconds, setSeconds] = useState(0);
   const [savedIds, setSavedIds] = useState(() => new Set(dashboard.savedQuestionIds));
+  const [bookmarkedIds, setBookmarkedIds] = useState(
+    () => new Set(dashboard.bookmarkedQuestionIds),
+  );
+  const [deckCount, setDeckCount] = useState(dashboard.flashcardCount);
   const [autoAdd, setAutoAdd] = useState(dashboard.autoAddFlashcards);
   const [wordProgress, setWordProgress] = useState(dashboard.words);
   const [answers, setAnswers] = useState<VocabSessionAnswer[]>([]);
@@ -174,7 +179,11 @@ export function VocabDrill({
     setStreak(result.currentStreak);
     setBestStreak(result.bestStreak);
     applyWordProgress(item, result);
-    if (result.autoAdded) setSavedIds((current) => new Set(current).add(item.id));
+    if (result.autoAdded) {
+      const alreadySaved = savedIds.has(item.id);
+      setSavedIds((current) => new Set(current).add(item.id));
+      if (!alreadySaved) setDeckCount((count) => count + 1);
+    }
 
     const answer: VocabSessionAnswer = {
       questionId: item.id,
@@ -206,28 +215,45 @@ export function VocabDrill({
       setError(`“${word}” is not available as a flashcard yet.`);
       return;
     }
+    const wasBookmarked = bookmarkedIds.has(questionId);
     const wasSaved = savedIds.has(questionId);
-    setSavedIds((current) => {
+    setBookmarkedIds((current) => {
       const next = new Set(current);
-      if (wasSaved) next.delete(questionId);
+      if (wasBookmarked) next.delete(questionId);
       else next.add(questionId);
       return next;
     });
+    setSavedIds((current) => {
+      const next = new Set(current);
+      if (wasBookmarked) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
+    if (wasBookmarked) setDeckCount((count) => Math.max(0, count - 1));
+    else if (!wasSaved) setDeckCount((count) => count + 1);
     if (!tracked) return;
     try {
       const response = await fetch("/api/drills/vocab/flashcards", {
-        method: wasSaved ? "DELETE" : "POST",
+        method: wasBookmarked ? "DELETE" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ questionId }),
       });
       if (!response.ok) throw new Error();
     } catch {
+      setBookmarkedIds((current) => {
+        const next = new Set(current);
+        if (wasBookmarked) next.add(questionId);
+        else next.delete(questionId);
+        return next;
+      });
       setSavedIds((current) => {
         const next = new Set(current);
         if (wasSaved) next.add(questionId);
         else next.delete(questionId);
         return next;
       });
+      if (wasBookmarked) setDeckCount((count) => count + 1);
+      else if (!wasSaved) setDeckCount((count) => Math.max(0, count - 1));
       setError("The flashcard change could not be saved.");
     }
   }
@@ -268,7 +294,7 @@ export function VocabDrill({
   const savedByWord = Object.fromEntries(
     allWords.map((entry) => [
       entry.correct,
-      savedIds.has(entry.id),
+      bookmarkedIds.has(entry.id),
     ]),
   );
 
@@ -302,7 +328,7 @@ export function VocabDrill({
         <VocabSummary
           answers={answers}
           seconds={seconds}
-          savedCount={savedIds.size}
+          savedCount={deckCount}
           error={error}
           onPracticeAgain={restart}
         />

@@ -1,6 +1,14 @@
 export const VOCAB_SESSION_SIZE = 7;
 export const VOCAB_MASTERY_TARGET = 3;
 
+export function nextVocabFlashcardPosition(
+  positions: readonly number[],
+  prioritized: boolean,
+): number {
+  if (prioritized) return Math.min(0, ...positions) - 1;
+  return Math.max(0, ...positions) + 1;
+}
+
 export type VocabProgressState = {
   wordCorrectStreak: number;
   currentStreak: number;
@@ -73,6 +81,7 @@ export type VocabDashboardState = {
   bestStreak: number;
   autoAddFlashcards: boolean;
   savedQuestionIds: string[];
+  bookmarkedQuestionIds: string[];
   flashcardCount: number;
   words: VocabWordProgress[];
   attempts: VocabAttemptStats;

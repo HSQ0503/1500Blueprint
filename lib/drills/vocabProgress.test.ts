@@ -4,6 +4,7 @@ import {
   VOCAB_MASTERY_TARGET,
   VOCAB_SESSION_SIZE,
   advanceVocabProgress,
+  nextVocabFlashcardPosition,
   selectVocabSession,
   summarizeVocabAttempts,
 } from "./vocabProgress";
@@ -20,6 +21,15 @@ test("a vocab session contains seven questions and rotates through the pool", ()
     selectVocabSession(words, 7).map((word) => word.id),
     ["word-7", "word-8", "word-9", "word-0", "word-1", "word-2", "word-3"],
   );
+});
+
+test("bookmarked flashcards are positioned ahead of imported and auto-added cards", () => {
+  const positions = [-2, -1, 1, 2, 3];
+
+  assert.equal(nextVocabFlashcardPosition(positions, true), -3);
+  assert.equal(nextVocabFlashcardPosition(positions, false), 4);
+  assert.equal(nextVocabFlashcardPosition([], true), -1);
+  assert.equal(nextVocabFlashcardPosition([], false), 1);
 });
 
 test("three correct answers in a row master a word while preserving the global streak", () => {

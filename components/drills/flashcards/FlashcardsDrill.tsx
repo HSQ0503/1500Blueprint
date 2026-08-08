@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DrillShell } from "../shared/DrillShell";
 import { ProgressBar } from "../shared/Hud";
 import { label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
@@ -10,9 +11,10 @@ import { DECK, DUE_COUNT, type Flashcard } from "./mock";
 
 type Phase = "overview" | "review" | "summary";
 type Rating = "again" | "good" | "easy";
+type ReviewFlashcard = Flashcard & { prioritized?: boolean };
 
-export function FlashcardsDrill({ deck }: { deck?: Flashcard[] }) {
-  const cards = deck ?? DECK;
+export function FlashcardsDrill({ deck }: { deck?: ReviewFlashcard[] }) {
+  const cards: ReviewFlashcard[] = deck ?? DECK;
   const dueCount = deck ? deck.length : DUE_COUNT;
 
   const [phase, setPhase] = useState<Phase>("overview");
@@ -44,7 +46,12 @@ export function FlashcardsDrill({ deck }: { deck?: Flashcard[] }) {
   if (phase === "overview") {
     return (
       <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref="/drills">
-        <Overview onStart={start} deckSize={cards.length} dueCount={dueCount} />
+        <Overview
+          onStart={start}
+          deckSize={cards.length}
+          dueCount={dueCount}
+          prioritizedCount={cards.filter((card) => card.prioritized).length}
+        />
       </DrillShell>
     );
   }
@@ -93,10 +100,12 @@ function Overview({
   onStart,
   deckSize,
   dueCount,
+  prioritizedCount,
 }: {
   onStart: () => void;
   deckSize: number;
   dueCount: number;
+  prioritizedCount: number;
 }) {
   return (
     <div className="mx-auto max-w-2xl">
@@ -105,6 +114,8 @@ function Overview({
           <Stat value={String(deckSize)} unit="cards in deck" />
           <span className="hidden h-8 w-px bg-navy/12 sm:block" />
           <Stat value={String(dueCount)} unit="due for review" />
+          <span className="hidden h-8 w-px bg-navy/12 sm:block" />
+          <Stat value={String(prioritizedCount)} unit="bookmarked first" />
         </div>
       </div>
 
@@ -116,8 +127,11 @@ function Overview({
           <Step n={1} text="See a word, then try to recall its meaning from memory." />
           <Step n={2} text="Reveal the definition and an example sentence to check yourself." />
           <Step n={3} text="Rate how well you knew it. Harder cards return sooner; easy ones wait longer." />
+          <Step n={4} text="Words you bookmark in the Vocab Drill always appear before imported and auto-added cards." />
         </ol>
       </div>
+
+      <CsvImportPanel />
 
       <div className="mt-5 flex gap-3">
         <button type="button" onClick={onStart} disabled={deckSize === 0} className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-45`}>
@@ -143,7 +157,7 @@ function ReviewCard({
   onReveal,
   onRate,
 }: {
-  card: Flashcard;
+  card: ReviewFlashcard;
   revealed: boolean;
   onReveal: () => void;
   onRate: (r: Rating) => void;
@@ -157,7 +171,14 @@ function ReviewCard({
           revealed ? "cursor-default" : "cursor-pointer hover:border-navy/30"
         }`}
       >
-        <div className={`${label} text-navy/40`}>Term</div>
+        <div className="flex items-center gap-2">
+          <div className={`${label} text-navy/40`}>Term</div>
+          {card.prioritized ? (
+            <span className="rounded-chip bg-gold/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-gold-600">
+              Bookmarked first
+            </span>
+          ) : null}
+        </div>
         <div className="mt-2 font-serif text-4xl font-bold text-exam-ink">{card.word}</div>
         {revealed ? (
           <div className="animate-fade-in mt-5 w-full max-w-md border-t border-navy/10 pt-5">
@@ -181,6 +202,94 @@ function ReviewCard({
         </div>
       ) : null}
     </div>
+  );
+}
+
+type ImportResponse = {
+  ok?: boolean;
+  imported?: number;
+  inserted?: number;
+  updated?: number;
+  error?: string;
+  errors?: string[];
+  errorCount?: number;
+};
+
+function CsvImportPanel() {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState<ImportResponse | null>(null);
+
+  async function importCsv(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setPending(true);
+    setResult(null);
+    try {
+      const response = await fetch("/api/drills/vocab/flashcards/import", {
+        method: "POST",
+        body: new FormData(form),
+      });
+      const body = (await response.json()) as ImportResponse;
+      setResult(body);
+      if (response.ok) {
+        form.reset();
+        router.refresh();
+      }
+    } catch {
+      setResult({ error: "The CSV could not be uploaded. Check your connection and try again." });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <section className="relative mt-4 overflow-hidden rounded-card border border-brand/20 bg-[linear-gradient(135deg,#f7fbff_0%,#eef6ff_100%)] p-5">
+      <div aria-hidden className="absolute inset-y-0 left-0 w-1 bg-brand" />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-chip bg-brand px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-white">CSV</span>
+            <h3 className="font-display text-lg font-bold text-navy">Import your own flashcards</h3>
+          </div>
+          <p className="mt-2 text-sm leading-5 text-navy/55">
+            Use columns <strong>word</strong> and <strong>definition</strong>. <strong>pos</strong> and <strong>example</strong> are optional.
+          </p>
+        </div>
+      </div>
+      <form onSubmit={importCsv} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <input
+          type="file"
+          name="file"
+          required
+          accept=".csv,text/csv"
+          aria-label="Flashcard CSV file"
+          className="min-w-0 flex-1 rounded-card border border-brand/20 bg-white px-3 py-2 text-sm text-navy file:mr-3 file:rounded-chip file:border-0 file:bg-navy file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white"
+        />
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-card bg-navy px-5 py-3 text-sm font-bold text-white shadow-[0_2px_0_#07193b] transition-transform active:translate-y-px disabled:cursor-wait disabled:opacity-50"
+        >
+          {pending ? "Importing..." : "Import cards"}
+        </button>
+      </form>
+      {result?.ok ? (
+        <p role="status" className="mt-3 text-sm font-semibold text-success-600">
+          Imported {result.imported} cards; {result.inserted} new; {result.updated} updated
+        </p>
+      ) : null}
+      {result?.error ? (
+        <div role="alert" className="mt-3 text-sm text-danger-600">
+          <p className="font-semibold">{result.error}</p>
+          {result.errors?.length ? (
+            <ul className="mt-1 max-h-28 list-disc overflow-y-auto pl-5 text-xs">
+              {result.errors.map((error, index) => <li key={`${error}-${index}`}>{error}</li>)}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
