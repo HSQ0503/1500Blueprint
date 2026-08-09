@@ -73,3 +73,91 @@ test("preserves an explicit grid-in answer without inventing an explanation", ()
   assert.equal(question.explanation, null);
   assert.deepEqual(question.notes, ["missing supplied explanation"]);
 });
+
+test("parses Test 7 module headings and question content sharing the number line", () => {
+  const modules = parseTest6Lines([
+    "Math",
+    "Module 1",
+    "1) [[IMG:image1.png]] Which value is correct?",
+    "A) 1",
+    "B) 2",
+    "C) 3",
+    "D) 4",
+    "EXPLANATION",
+    "Choice B is the best answer because it is 2.",
+    "Choice A is incorrect.",
+    "Choice C is incorrect.",
+    "Choice D is incorrect.",
+    "Advanced Math\tNonlinear functions\tMedium",
+    "Module 2 Easy",
+    "1)",
+    "What is x?",
+    "Answer: 5",
+    "Difficulty: Easy",
+    "Module 2 Hard",
+    "1)",
+    "What is y?",
+    "Answer: 7",
+    "Difficulty: Hard",
+  ]);
+
+  assert.deepEqual(
+    modules.map((module) => [module.order, module.variant, module.questions.length]),
+    [[1, null, 1], [2, "easy", 1], [2, "hard", 1]],
+  );
+  assert.equal(modules[0].questions[0].prompt, "Which value is correct?");
+  assert.equal(modules[0].questions[0].figure, "image1.png");
+  assert.equal(modules[0].questions[0].domain, "Advanced Math");
+  assert.equal(modules[0].questions[0].skill, "Nonlinear functions");
+  assert.equal(modules[0].questions[0].difficulty, "medium");
+  assert.doesNotMatch(modules[0].questions[0].explanation ?? "", /Advanced Math/);
+});
+
+test("parses Test 7 dotted choices and standalone grid-in answer markers", () => {
+  const modules = parseTest6Lines([
+    "Math",
+    "Module 1",
+    "1)",
+    "Which choice is correct?",
+    "A. One",
+    "B. Two",
+    "C. Three",
+    "D. Four",
+    "ANSWER: B",
+    "EXPLANATION",
+    "Choice B is the best answer because it is two.",
+    "Advanced Math Nonlinear functions Medium",
+    "2)",
+    "What is the area?",
+    "ANSWER",
+    "892",
+    "EXPLANATION",
+    "The answer is 892.",
+    "Geometry & Trigonometry Area and Volume Medium",
+  ]);
+
+  const [multipleChoice, gridIn] = modules[0].questions;
+  assert.equal(multipleChoice.type, "mc");
+  assert.equal(multipleChoice.correct, "B");
+  assert.equal(multipleChoice.choices[3].text, "Four");
+  assert.equal(gridIn.type, "grid");
+  assert.equal(gridIn.prompt, "What is the area?");
+  assert.deepEqual(gridIn.acceptedAnswers, ["892"]);
+});
+
+test("does not mistake an instruction beginning with Answer for an answer marker", () => {
+  const modules = parseTest6Lines([
+    "Math",
+    "Module 1",
+    "1)",
+    "Answer the question using the information given.",
+    "What is x?",
+    "Answer: 5",
+    "Difficulty: Easy",
+  ]);
+
+  const question = modules[0].questions[0];
+  assert.equal(question.passage, "Answer the question using the information given.");
+  assert.equal(question.prompt, "What is x?");
+  assert.deepEqual(question.acceptedAnswers, ["5"]);
+});

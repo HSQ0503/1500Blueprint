@@ -22,7 +22,7 @@ import {
 import { DrillEmpty } from "@/components/drills/shared/DrillEmpty";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isDrillUnderConstruction } from "@/lib/flags";
-import { loadVocabDashboard, loadVocabFlashcards } from "@/lib/drills/vocab.server";
+import { loadVocabDashboard, loadVocabFlashcardDeck } from "@/lib/drills/vocab.server";
 
 // Next 16: route params and searchParams are async.
 export default async function DrillPage({
@@ -106,10 +106,16 @@ export default async function DrillPage({
       );
     }
     case "flashcards": {
-      const deck = email
-        ? await loadVocabFlashcards(email)
-        : toFlashcards(await loadDrillQuestions("flashcards"));
-      return <FlashcardsDrill deck={deck} />;
+      if (email) {
+        const deck = await loadVocabFlashcardDeck(email);
+        return (
+          <FlashcardsDrill
+            deck={deck.cards}
+            manageHref={deck.setId ? `/flashcards/${deck.setId}` : "/flashcards"}
+          />
+        );
+      }
+      return <FlashcardsDrill deck={toFlashcards(await loadDrillQuestions("flashcards"))} />;
     }
     case "ai-math":
       return <AiMathDrill />;

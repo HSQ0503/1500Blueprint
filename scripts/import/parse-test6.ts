@@ -107,8 +107,8 @@ const EXPECTED_COUNTS: Record<string, number> = {
   "math/2/hard": 22,
 };
 
-const QUESTION_RE = /^(\d+)\)$/;
-const CHOICE_RE = /^([A-Da-d])\)\s*(.*)$/;
+const QUESTION_RE = /^(\d+)\)(?:\s*(.*))?$/;
+const CHOICE_RE = /^([A-Da-d])[.)]\s*(.*)$/;
 const IMAGE_RE = /\[\[IMG:([^\]]+)\]\]/g;
 const RW_META_RE = /\s+(EASY|MEDIUM|HARD),\s*[A-Z][A-Z &/\-]*\s*$/i;
 const SOURCE_URL_RE = /^https?:\/\/\S+$/i;
@@ -157,6 +157,23 @@ function questionKey(module: Test6Module, position: number): string {
   return `${moduleKey(module.section, module.order, module.variant)}/${position}`;
 }
 
+function moduleFromHeading(
+  section: Test6Section,
+  line: string,
+): Omit<Test6Module, "section" | "label" | "questions"> | null {
+  const normalized = line.toLowerCase().replace(/\s+/g, " ").trim();
+  if (normalized === "baseline" || normalized === "module 1") {
+    return { order: 1, variant: null };
+  }
+  if (normalized === "easy" || normalized === "module 2 easy") {
+    return { order: 2, variant: "easy" };
+  }
+  if (normalized === "hard" || normalized === "module 2 hard") {
+    return { order: 2, variant: "hard" };
+  }
+  return null;
+}
+
 function extractImages(lines: string[]): { lines: string[]; figures: string[] } {
   const figures: string[] = [];
   const cleaned = lines
@@ -186,6 +203,20 @@ function parseChoices(lines: string[]): { choices: Omit<Test6Choice, "explanatio
   return { choices, firstIndex };
 }
 
+function extractExplicitAnswer(lines: string[]): { lines: string[]; answer: string | null } {
+  const index = lines.findIndex((line) => /^ANSWER(?:\s*:\s*.*)?\s*$/i.test(line));
+  if (index < 0) return { lines, answer: null };
+
+  const match = lines[index].match(/^ANSWER(?:\s*:\s*(.*))?\s*$/i);
+  const inline = match?.[1]?.trim() ?? "";
+  const answer = inline || lines[index + 1]?.trim() || null;
+  const removeCount = inline || !lines[index + 1] ? 1 : 2;
+  return {
+    answer,
+    lines: [...lines.slice(0, index), ...lines.slice(index + removeCount)],
+  };
+}
+
 function choiceExplanations(explanation: string | null): Partial<Record<string, string>> {
   if (!explanation) return {};
   const starts = [...explanation.matchAll(/\bChoice\s+([A-D])\s+is\s+(?:the best answer|incorrect)\b/gi)].map(
@@ -213,12 +244,42 @@ function inferCorrectChoice(explanation: string | null): string | null {
   return explanation.match(/\bChoice\s+([A-D])\s+is\s+the best answer\b/i)?.[1]?.toUpperCase() ?? null;
 }
 
+function compactMathMetadata(
+  line: string,
+): { topic: string; subtopic: string; difficulty: Difficulty } | null {
+  const difficultyMatch = line.match(/\s+(EASY|MEDIUM|HARD)\s*$/i);
+  if (!difficultyMatch) return null;
+  const difficulty = normalizeDifficulty(difficultyMatch[1]);
+  if (!difficulty) return null;
+
+  const body = line.slice(0, difficultyMatch.index).trim();
+  const topics = [
+    "Problem Solving & Data Analysis",
+    "Problem-Solving and Data Analysis",
+    "Geometry & Trigonometry",
+    "Geometry and Trigonometry",
+    "Advanced Math",
+    "Algebra",
+  ];
+  const topic = topics.find((candidate) =>
+    body.toLowerCase().startsWith(candidate.toLowerCase()),
+  );
+  if (!topic) return null;
+  const subtopic = body.slice(topic.length).trim();
+  return subtopic ? { topic, subtopic, difficulty } : null;
+}
+
 function parseQuestionBlock(block: string[], module: Test6Module, position: number): Test6Question {
-  const rawNumber = Number(block[0].match(QUESTION_RE)?.[1] ?? position);
+  const header = block[0].match(QUESTION_RE);
+  const rawNumber = Number(header?.[1] ?? position);
   const notes: string[] = [];
   if (rawNumber !== position) notes.push(`question number ${rawNumber} at position ${position}`);
 
-  const { lines: withoutImages, figures } = extractImages(block.slice(1));
+  const inlineContent = header?.[2]?.trim();
+  const { lines: withoutImages, figures } = extractImages([
+    ...(inlineContent ? [inlineContent] : []),
+    ...block.slice(1),
+  ]);
   if (figures.length > 1) notes.push(`multiple figures found: ${figures.join(", ")}`);
 
   const explanationHeadingIndex = withoutImages.findIndex((line) => /^EXPLANATION$/i.test(line));
@@ -234,16 +295,26 @@ function parseQuestionBlock(block: string[], module: Test6Module, position: numb
     (line) => !SOURCE_URL_RE.test(line),
   );
 
+  const compactMetadata = module.section === "math"
+    ? [...withoutImages].reverse().map(compactMathMetadata).find(Boolean) ?? null
+    : null;
   const sourceTopic =
-    [...withoutImages].reverse().find((line) => /^Topic:/i.test(line))?.replace(/^Topic:\s*/i, "").trim() ?? null;
+    [...withoutImages].reverse().find((line) => /^Topic:/i.test(line))?.replace(/^Topic:\s*/i, "").trim() ??
+    compactMetadata?.topic ??
+    null;
   const sourceSubtopic =
-    [...withoutImages].reverse().find((line) => /^Subtopic:/i.test(line))?.replace(/^Subtopic:\s*/i, "").trim() ?? null;
+    [...withoutImages].reverse().find((line) => /^Subtopic:/i.test(line))?.replace(/^Subtopic:\s*/i, "").trim() ??
+    compactMetadata?.subtopic ??
+    null;
   let difficulty = normalizeDifficulty(
     [...withoutImages].reverse().find((line) => /^Difficulty:/i.test(line))?.replace(/^Difficulty:\s*/i, "") ?? "",
-  );
+  ) ?? compactMetadata?.difficulty ?? null;
 
-  const isMetadata = (line: string) => /^(?:Topic|Subtopic|Difficulty):/i.test(line);
-  const content = beforeExplanation.filter((line) => !isMetadata(line));
+  const isMetadata = (line: string) =>
+    /^(?:Topic|Subtopic|Difficulty):/i.test(line) || Boolean(compactMathMetadata(line));
+  const rawContent = beforeExplanation.filter((line) => !isMetadata(line));
+  const explicitAnswer = extractExplicitAnswer(rawContent);
+  const content = explicitAnswer.lines;
   const explanationLines = afterExplanation.filter((line) => !isMetadata(line));
   const explanation = explanationLines.join("\n\n").trim() || null;
   if (!explanation) notes.push("missing supplied explanation");
@@ -270,18 +341,11 @@ function parseQuestionBlock(block: string[], module: Test6Module, position: numb
     const stemLines = content.slice(0, parsedChoices.firstIndex);
     prompt = stemLines.pop()?.trim() ?? "";
     passage = stemLines.join("\n\n").trim() || null;
-    correct = inferCorrectChoice(explanation);
+    correct = explicitAnswer.answer?.match(/^[A-D]/i)?.[0]?.toUpperCase() ?? inferCorrectChoice(explanation);
     if (!correct) notes.push("could not infer correct MC answer from explanation");
   } else {
     const stemLines = [...content];
-    let rawAnswer: string | null = null;
-    const explicitAnswerIndex = stemLines.findIndex((line) => /^Answer:\s*/i.test(line));
-    if (explicitAnswerIndex >= 0) {
-      rawAnswer = stemLines[explicitAnswerIndex].replace(/^Answer:\s*/i, "").trim();
-      stemLines.splice(explicitAnswerIndex, 1);
-    } else if (stemLines.length >= 2) {
-      rawAnswer = stemLines.pop()?.trim() ?? null;
-    }
+    const rawAnswer = explicitAnswer.answer ?? (stemLines.length >= 2 ? stemLines.pop()?.trim() ?? null : null);
     if (rawAnswer) {
       acceptedAnswers = rawAnswer
         .split(/\s+or\s+/i)
@@ -356,12 +420,12 @@ export function parseTest6Lines(lines: string[]): Test6Module[] {
       section = line === "Math" ? "math" : "rw";
       continue;
     }
-    if (section && (line === "Baseline" || line === "Easy" || line === "Hard")) {
+    const moduleHeading = section ? moduleFromHeading(section, line) : null;
+    if (section && moduleHeading) {
       flushModule();
       current = {
         section,
-        order: line === "Baseline" ? 1 : 2,
-        variant: line === "Easy" ? "easy" : line === "Hard" ? "hard" : null,
+        ...moduleHeading,
         label: `${section === "rw" ? "Reading/Writing" : "Math"} — ${line}`,
         questions: [],
       };
@@ -460,7 +524,13 @@ function applyEnrichment(question: Test6Question, enrichment: Enrichment): void 
   question.domain = enrichment.domain;
   question.skill = enrichment.skill;
 
-  for (const replacement of enrichment.replacements) {
+  // Apply larger edits first so a specific sentence-level replacement can make
+  // a later token-level replacement unique. Suggestions absent from the source
+  // are harmless no-ops; they never mutate content and should not block import.
+  const replacements = [...enrichment.replacements].sort(
+    (a, b) => b.from.length - a.from.length,
+  );
+  for (const replacement of replacements) {
     const target = getReplacementTarget(question, replacement);
     if (!target) {
       question.notes.push(`invalid LaTeX replacement target: ${replacement.field}`);
@@ -469,7 +539,13 @@ function applyEnrichment(question: Test6Question, enrichment: Enrichment): void 
     }
     const occurrences = countOccurrences(target.value, replacement.from);
     if (replacement.from === replacement.to) continue;
-    if (occurrences !== 1 || !replacement.from) {
+    if (!replacement.from) {
+      question.notes.push(`unsafe LaTeX replacement (${replacement.field}, matches=${occurrences})`);
+      question.needsReview = true;
+      continue;
+    }
+    if (occurrences === 0) continue;
+    if (occurrences !== 1) {
       question.notes.push(`unsafe LaTeX replacement (${replacement.field}, matches=${occurrences})`);
       question.needsReview = true;
       continue;
@@ -677,9 +753,12 @@ export function auditTest6(result: Test6ParseResult): {
   };
 }
 
-export function printTest6Report(result: Test6ParseResult): ReturnType<typeof auditTest6> {
+export function printTest6Report(
+  result: Test6ParseResult,
+  label = "Practice Test 6",
+): ReturnType<typeof auditTest6> {
   const audit = auditTest6(result);
-  console.log("\nPractice Test 6 parse report");
+  console.log(`\n${label} parse report`);
   for (const testModule of result.modules) {
     const flagged = testModule.questions.filter((question) => question.needsReview).length;
     console.log(`  ${testModule.label.padEnd(28)} ${String(testModule.questions.length).padStart(2)} questions  ${flagged ? `⚠ ${flagged}` : "✓"}`);

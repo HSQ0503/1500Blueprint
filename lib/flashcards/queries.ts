@@ -143,13 +143,22 @@ export async function getSetForViewer(
     row.owner_email === email || row.visibility === "shared" || isAdminEmail(email);
   if (!visible) return null;
 
-  const { data: cardData } = await db
-    .from("flashcard_cards")
-    .select("id, position, term, definition, term_image_url, definition_image_url")
-    .eq("set_id", id)
-    .order("position", { ascending: true });
+  const cardRows: CardRow[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data: cardData, error } = await db
+      .from("flashcard_cards")
+      .select("id, position, term, definition, term_image_url, definition_image_url")
+      .eq("set_id", id)
+      .order("position", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) return null;
+    const page = (cardData as CardRow[] | null) ?? [];
+    cardRows.push(...page);
+    if (page.length < pageSize) break;
+  }
 
-  const cards = (cardData as CardRow[] | null)?.map(mapCard) ?? [];
+  const cards = cardRows.map(mapCard);
   return { ...mapSet(row), cards };
 }
 

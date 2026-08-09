@@ -96,6 +96,7 @@ export type VocabAnswerResult = {
   currentStreak: number;
   bestStreak: number;
   autoAdded: boolean;
+  flashcardSaveFailed?: boolean;
 };
 
 function summarizeWindow(attempts: readonly VocabAttempt[]): VocabAttemptWindow {

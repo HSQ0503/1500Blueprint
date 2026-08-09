@@ -179,6 +179,9 @@ export function VocabDrill({
     setStreak(result.currentStreak);
     setBestStreak(result.bestStreak);
     applyWordProgress(item, result);
+    if (result.flashcardSaveFailed) {
+      setError("Your answer was saved, but the missed word could not be added to flashcards.");
+    }
     if (result.autoAdded) {
       const alreadySaved = savedIds.has(item.id);
       setSavedIds((current) => new Set(current).add(item.id));
@@ -369,15 +372,21 @@ export function VocabDrill({
               type="button"
               role="switch"
               aria-checked={autoAdd}
+              aria-label="Automatically add missed words to flashcards"
               disabled={settingsPending}
               onClick={toggleAutoAdd}
-              className="inline-flex items-center gap-2 text-xs font-semibold text-navy/65 disabled:opacity-50"
+              className="inline-flex min-h-11 cursor-pointer items-center gap-2.5 rounded-full border border-navy/15 bg-white px-3 text-xs font-semibold text-navy/65 shadow-sm transition-colors hover:border-navy/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-50"
             >
-              Auto-add to flashcards
-              <span className={`relative h-5 w-9 rounded-full transition-colors ${autoAdd ? "bg-success" : "bg-navy/20"}`}>
-                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${autoAdd ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+              <span>Auto-add missed words</span>
+              <span
+                aria-hidden="true"
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${autoAdd ? "bg-success" : "bg-navy/20"}`}
+              >
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${autoAdd ? "translate-x-5" : "translate-x-0.5"}`} />
               </span>
-              <span className={autoAdd ? "text-success-600" : "text-navy/45"}>{autoAdd ? "ON" : "OFF"}</span>
+              <span className={`w-6 text-left ${autoAdd ? "text-success-600" : "text-navy/45"}`}>
+                {autoAdd ? "On" : "Off"}
+              </span>
             </button>
           </div>
         </div>

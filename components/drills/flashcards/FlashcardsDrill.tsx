@@ -13,7 +13,13 @@ type Phase = "overview" | "review" | "summary";
 type Rating = "again" | "good" | "easy";
 type ReviewFlashcard = Flashcard & { prioritized?: boolean };
 
-export function FlashcardsDrill({ deck }: { deck?: ReviewFlashcard[] }) {
+export function FlashcardsDrill({
+  deck,
+  manageHref = "/flashcards",
+}: {
+  deck?: ReviewFlashcard[];
+  manageHref?: string;
+}) {
   const cards: ReviewFlashcard[] = deck ?? DECK;
   const dueCount = deck ? deck.length : DUE_COUNT;
 
@@ -51,6 +57,7 @@ export function FlashcardsDrill({ deck }: { deck?: ReviewFlashcard[] }) {
           deckSize={cards.length}
           dueCount={dueCount}
           prioritizedCount={cards.filter((card) => card.prioritized).length}
+          manageHref={manageHref}
         />
       </DrillShell>
     );
@@ -101,11 +108,13 @@ function Overview({
   deckSize,
   dueCount,
   prioritizedCount,
+  manageHref,
 }: {
   onStart: () => void;
   deckSize: number;
   dueCount: number;
   prioritizedCount: number;
+  manageHref: string;
 }) {
   return (
     <div className="mx-auto max-w-2xl">
@@ -137,10 +146,10 @@ function Overview({
         <button type="button" onClick={onStart} disabled={deckSize === 0} className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-45`}>
           Start review
         </button>
-        <button type="button" className={secondaryBtn}>
+        <Link href={manageHref} className={secondaryBtn}>
           <SlidersIcon className="h-4 w-4" />
           Manage deck
-        </button>
+        </Link>
       </div>
       {deckSize === 0 ? (
         <p className="mt-4 rounded-card border border-navy/10 bg-white px-4 py-3 text-sm text-navy/55">

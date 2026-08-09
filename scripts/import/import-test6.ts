@@ -1,7 +1,7 @@
 /**
- * Validate, AI-enrich, and import the alternate Practice Test 6 DOCX format.
+ * Validate, AI-enrich, and import the structured Practice Test 6/7 DOCX format.
  *
- *   npx tsx scripts/import/import-test6.ts "<test-6.docx>" [--dry-run] [--cache=<path>]
+ *   npx tsx scripts/import/import-test6.ts "<test.docx>" [--test=6|7] [--dry-run] [--cache=<path>]
  *
  * AI is restricted to official SAT tags and exact LaTeX replacements. The
  * source's explanations are imported as human-authored content unchanged.
@@ -37,13 +37,55 @@ const args = process.argv.slice(2);
 const docxPath = args.find((arg) => !arg.startsWith("--"));
 const dryRun = args.includes("--dry-run");
 const cacheArg = args.find((arg) => arg.startsWith("--cache="))?.slice("--cache=".length);
-const slug = "practice-test-6";
-const title = "Practice Test 6";
+const testNumber = Number(args.find((arg) => arg.startsWith("--test="))?.slice("--test=".length) ?? "6");
+
+type ImportProfile = {
+  number: 6 | 7;
+  expectedQuestions: number;
+  expectedImages: number;
+  expectedTables: number;
+  expectedExplanations: number;
+  expectedChoices: number;
+  allowedFlags: Readonly<Record<string, readonly string[]>>;
+};
+
+const PROFILES: Record<ImportProfile["number"], ImportProfile> = {
+  6: {
+    number: 6,
+    expectedQuestions: 147,
+    expectedImages: 10,
+    expectedTables: 7,
+    expectedExplanations: 145,
+    expectedChoices: 524,
+    allowedFlags: {
+      "math/2/hard/19": ["missing supplied explanation"],
+      "math/2/hard/22": ["missing supplied explanation"],
+    },
+  },
+  7: {
+    number: 7,
+    expectedQuestions: 147,
+    expectedImages: 6,
+    expectedTables: 4,
+    expectedExplanations: 147,
+    expectedChoices: 504,
+    allowedFlags: {},
+  },
+};
+
+if (testNumber !== 6 && testNumber !== 7) {
+  console.error("--test must be 6 or 7");
+  process.exit(1);
+}
+
+const profile = PROFILES[testNumber];
+const slug = `practice-test-${profile.number}`;
+const title = `Practice Test ${profile.number}`;
 const bucket = "figures";
 const minutes: Record<string, number> = { rw: 32, math: 35 };
 
 if (!docxPath) {
-  console.error('Usage: tsx scripts/import/import-test6.ts "<test-6.docx>" [--dry-run] [--cache=<path>]');
+  console.error('Usage: tsx scripts/import/import-test6.ts "<test.docx>" [--test=6|7] [--dry-run] [--cache=<path>]');
   process.exit(1);
 }
 
@@ -61,26 +103,38 @@ function sha256(value: Buffer): string {
 function validateParsed(result: Test6ParseResult, enriched: boolean): void {
   const audit = auditTest6(result);
   const questions = result.modules.flatMap((module) => module.questions);
+  const choiceCount = questions.reduce((sum, question) => sum + question.choices.length, 0);
   const missingAnswers = questions.filter((question) =>
     question.type === "mc" ? !question.correct : question.acceptedAnswers.length === 0,
   );
   const unexpectedFlags = audit.flagged.filter(
-    (question) =>
-      !(
-        ["math/2/hard/19", "math/2/hard/22"].includes(question.key) &&
-        question.notes.length === 1 &&
-        question.notes[0] === "missing supplied explanation"
-      ),
+    (question) => {
+      const allowed = profile.allowedFlags[question.key];
+      return !allowed || question.notes.length !== allowed.length || question.notes.some((note) => !allowed.includes(note));
+    },
   );
 
   const errors = [...audit.errors];
-  if (audit.questionCount !== 147) errors.push(`expected 147 questions, found ${audit.questionCount}`);
-  if (audit.imageCount !== 10 || audit.referencedImages !== 10) errors.push("expected 10 referenced source images");
-  if (audit.tableCount !== 7) errors.push(`expected 7 tables, found ${audit.tableCount}`);
-  if (audit.explanationCount !== 145) errors.push(`expected 145 supplied explanations, found ${audit.explanationCount}`);
+  if (audit.questionCount !== profile.expectedQuestions) {
+    errors.push(`expected ${profile.expectedQuestions} questions, found ${audit.questionCount}`);
+  }
+  if (audit.imageCount !== profile.expectedImages || audit.referencedImages !== profile.expectedImages) {
+    errors.push(`expected ${profile.expectedImages} referenced source images`);
+  }
+  if (audit.tableCount !== profile.expectedTables) {
+    errors.push(`expected ${profile.expectedTables} tables, found ${audit.tableCount}`);
+  }
+  if (audit.explanationCount !== profile.expectedExplanations) {
+    errors.push(`expected ${profile.expectedExplanations} supplied explanations, found ${audit.explanationCount}`);
+  }
+  if (choiceCount !== profile.expectedChoices) {
+    errors.push(`expected ${profile.expectedChoices} choices, found ${choiceCount}`);
+  }
   if (missingAnswers.length) errors.push(`missing answers: ${missingAnswers.map((question) => question.key).join(", ")}`);
   if (unexpectedFlags.length) errors.push(`questions need review: ${unexpectedFlags.map((question) => question.key).join(", ")}`);
-  if (enriched && audit.taggedCount !== 147) errors.push(`expected 147 AI tags, found ${audit.taggedCount}`);
+  if (enriched && audit.taggedCount !== profile.expectedQuestions) {
+    errors.push(`expected ${profile.expectedQuestions} AI tags, found ${audit.taggedCount}`);
+  }
   if (enriched) {
     for (const question of questions) {
       if (!question.domain || !question.skill || !TEST6_SKILLS_BY_DOMAIN[question.domain]?.includes(question.skill)) {
@@ -88,7 +142,7 @@ function validateParsed(result: Test6ParseResult, enriched: boolean): void {
       }
     }
   }
-  if (errors.length) throw new Error(`Test 6 validation failed:\n- ${errors.join("\n- ")}`);
+  if (errors.length) throw new Error(`${title} validation failed:\n- ${errors.join("\n- ")}`);
 }
 
 async function ensureBucket(): Promise<void> {
@@ -217,13 +271,20 @@ async function verifyDatabase(testId: string): Promise<void> {
     .select("id,domain,skill,figure_url,passage,explanation,explanation_source")
     .in("module_id", moduleIds);
   if (questionError) throw questionError;
-  if (questions?.length !== 147) throw new Error(`production verification found ${questions?.length ?? 0} questions`);
-  if (questions.filter((question) => question.figure_url).length !== 10) throw new Error("production verification did not find 10 figures");
-  if (questions.filter((question) => question.passage?.includes("@@ROW@@")).length !== 7) {
-    throw new Error("production verification did not find 7 native tables");
+  if (questions?.length !== profile.expectedQuestions) {
+    throw new Error(`production verification found ${questions?.length ?? 0} questions`);
   }
-  if (questions.filter((question) => question.explanation && question.explanation_source === "human").length !== 145) {
-    throw new Error("production verification did not find 145 human explanations");
+  if (questions.filter((question) => question.figure_url).length !== profile.expectedImages) {
+    throw new Error(`production verification did not find ${profile.expectedImages} figures`);
+  }
+  if (questions.filter((question) => question.passage?.includes("@@ROW@@")).length !== profile.expectedTables) {
+    throw new Error(`production verification did not find ${profile.expectedTables} native tables`);
+  }
+  if (
+    questions.filter((question) => question.explanation && question.explanation_source === "human").length !==
+    profile.expectedExplanations
+  ) {
+    throw new Error(`production verification did not find ${profile.expectedExplanations} human explanations`);
   }
   if (questions.some((question) => !question.domain || !question.skill)) throw new Error("production verification found an untagged question");
 
@@ -232,7 +293,9 @@ async function verifyDatabase(testId: string): Promise<void> {
     .select("id", { count: "exact", head: true })
     .in("question_id", questions.map((question) => question.id));
   if (choiceError) throw choiceError;
-  if (count !== 524) throw new Error(`production verification found ${count ?? 0} choices instead of 524`);
+  if (count !== profile.expectedChoices) {
+    throw new Error(`production verification found ${count ?? 0} choices instead of ${profile.expectedChoices}`);
+  }
 }
 
 const supabase = createClient(supabaseUrl, supabaseSecret, { auth: { persistSession: false } });
@@ -240,11 +303,11 @@ const supabase = createClient(supabaseUrl, supabaseSecret, { auth: { persistSess
 async function main(): Promise<void> {
   if (!fs.existsSync(docxPath as string)) throw new Error(`DOCX not found: ${docxPath}`);
   const sourceHash = sha256(fs.readFileSync(docxPath as string)).slice(0, 12);
-  const cachePath = cacheArg || path.join(os.tmpdir(), `practice-test-6-${sourceHash}-enrichment.json`);
-
-  console.log("Parsing Test 6 source…");
+  console.log(`Parsing Practice Test ${profile.number} source…`);
   const result = await parseTest6Docx(docxPath as string);
   validateParsed(result, false);
+  const parsedHash = sha256(Buffer.from(JSON.stringify(result.modules))).slice(0, 12);
+  const cachePath = cacheArg || path.join(os.tmpdir(), `${slug}-${sourceHash}-${parsedHash}-enrichment.json`);
 
   console.log(`AI-tagging and normalizing LaTeX with ${model}…`);
   await enrichTest6Questions(result.modules, {
@@ -254,10 +317,10 @@ async function main(): Promise<void> {
     batchSize: 4,
     concurrency: 3,
   });
-  const audit = printTest6Report(result);
+  const audit = printTest6Report(result, title);
   validateParsed(result, true);
 
-  const enrichedOutput = path.join(os.tmpdir(), `practice-test-6-${sourceHash}-enriched.json`);
+  const enrichedOutput = path.join(os.tmpdir(), `${slug}-${sourceHash}-enriched.json`);
   fs.writeFileSync(enrichedOutput, JSON.stringify(result.modules, null, 2));
   console.log(`Validated enrichment: ${audit.latexReplacementCount} LaTeX replacements`);
   console.log(`Enriched audit file: ${enrichedOutput}`);
@@ -267,14 +330,17 @@ async function main(): Promise<void> {
   }
   if (!supabaseUrl || !supabaseSecret) throw new Error("Supabase URL and secret key are required for upload");
 
-  console.log("Uploading and byte-verifying 10 source images…");
+  console.log(`Uploading and byte-verifying ${profile.expectedImages} source images…`);
   await ensureBucket();
   const uploaded = await uploadAndVerifyImages(result.images);
 
-  console.log("Writing Practice Test 6 to production…");
+  console.log(`Writing ${title} to production…`);
   const testId = await writeDatabase(result, uploaded);
   await verifyDatabase(testId);
-  console.log("Imported and verified Practice Test 6: 6 modules, 147 questions, 524 choices, 10 images, 7 tables.");
+  console.log(
+    `Imported and verified ${title}: 6 modules, ${profile.expectedQuestions} questions, ` +
+      `${profile.expectedChoices} choices, ${profile.expectedImages} images, ${profile.expectedTables} tables.`,
+  );
 }
 
 main().catch((error) => {

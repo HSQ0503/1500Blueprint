@@ -32,6 +32,12 @@ test("bookmarked flashcards are positioned ahead of imported and auto-added card
   assert.equal(nextVocabFlashcardPosition([], false), 1);
 });
 
+test("flashcard positions remain unique beyond Supabase's 1,000-row page size", () => {
+  const positions = Array.from({ length: 1_185 }, (_, index) => index + 1);
+  assert.equal(nextVocabFlashcardPosition(positions, false), 1_186);
+  assert.equal(nextVocabFlashcardPosition([-3, -2, -1, ...positions], true), -4);
+});
+
 test("three correct answers in a row master a word while preserving the global streak", () => {
   let state = { wordCorrectStreak: 0, currentStreak: 4, bestStreak: 6, mastered: false };
 

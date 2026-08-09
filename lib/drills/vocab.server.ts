@@ -128,24 +128,37 @@ async function saveStoredState(email: string, state: StoredVocabState): Promise<
 }
 
 async function loadCards(setId: string): Promise<VocabCardRow[]> {
-  const { data, error } = await supabaseAdmin()
-    .from("flashcard_cards")
-    .select("id,position,term,definition")
-    .eq("set_id", setId)
-    .order("position")
-    .returns<VocabCardRow[]>();
-  if (error) throw databaseError("Could not load Vocab Flashcards", error);
-  return data ?? [];
+  const rows: VocabCardRow[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabaseAdmin()
+      .from("flashcard_cards")
+      .select("id,position,term,definition")
+      .eq("set_id", setId)
+      .order("position")
+      .range(from, from + pageSize - 1)
+      .returns<VocabCardRow[]>();
+    if (error) throw databaseError("Could not load Vocab Flashcards", error);
+    rows.push(...(data ?? []));
+    if ((data?.length ?? 0) < pageSize) return rows;
+  }
 }
 
 async function loadCardPositions(setId: string): Promise<number[]> {
-  const { data, error } = await supabaseAdmin()
-    .from("flashcard_cards")
-    .select("position")
-    .eq("set_id", setId)
-    .returns<{ position: number }[]>();
-  if (error) throw databaseError("Could not order Vocab Flashcards", error);
-  return (data ?? []).map((row) => row.position);
+  const positions: number[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabaseAdmin()
+      .from("flashcard_cards")
+      .select("position")
+      .eq("set_id", setId)
+      .order("position")
+      .range(from, from + pageSize - 1)
+      .returns<{ position: number }[]>();
+    if (error) throw databaseError("Could not order Vocab Flashcards", error);
+    positions.push(...(data ?? []).map((row) => row.position));
+    if ((data?.length ?? 0) < pageSize) return positions;
+  }
 }
 
 async function saveQuestionAsFlashcard(
@@ -350,9 +363,15 @@ export async function recordVocabAnswer(
   if (progressWrite.error) throw databaseError("Could not save word progress", progressWrite.error);
 
   let autoAdded = false;
+  let flashcardSaveFailed = false;
   if (!isCorrect && stored.autoAdd) {
-    await saveQuestionAsFlashcard(email, question, false);
-    autoAdded = true;
+    try {
+      await saveQuestionAsFlashcard(email, question, false);
+      autoAdded = true;
+    } catch (error) {
+      flashcardSaveFailed = true;
+      console.error("Vocab answer was saved but auto-add failed", error);
+    }
   }
   const masteredRes = await db
     .from("drill_question_progress")
@@ -371,6 +390,7 @@ export async function recordVocabAnswer(
     currentStreak: next.currentStreak,
     bestStreak: next.bestStreak,
     autoAdded,
+    flashcardSaveFailed,
   };
 }
 
@@ -397,14 +417,23 @@ export async function removeVocabFlashcard(email: string, questionId: string): P
   if (error) throw databaseError("Could not remove the vocab flashcard", error);
 }
 
-export async function loadVocabFlashcards(email: string): Promise<VocabFlashcard[]> {
+export async function loadVocabFlashcardDeck(
+  email: string,
+): Promise<{ cards: VocabFlashcard[]; setId: string | null }> {
   const set = await loadVocabSet(email);
-  if (!set) return [];
-  return (await loadCards(set.id)).map((card) => ({
-    word: card.term,
-    prioritized: card.position < 0,
-    ...decodeDefinition(card.definition),
-  }));
+  if (!set) return { cards: [], setId: null };
+  return {
+    setId: set.id,
+    cards: (await loadCards(set.id)).map((card) => ({
+      word: card.term,
+      prioritized: card.position < 0,
+      ...decodeDefinition(card.definition),
+    })),
+  };
+}
+
+export async function loadVocabFlashcards(email: string): Promise<VocabFlashcard[]> {
+  return (await loadVocabFlashcardDeck(email)).cards;
 }
 
 function chunks<T>(items: readonly T[], size: number): T[][] {
