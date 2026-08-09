@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { drillStats, patternOfTheDay } from "@/lib/gamification";
 import type { GrammarMasteryState } from "@/lib/drills/mastery";
+import { isDrillUnderConstruction } from "@/lib/flags";
 import { DrillIcon, type DrillIconKey } from "./icons";
 import { PlayIcon } from "@/components/shell/icons";
 
@@ -64,21 +65,26 @@ export function DrillCatalog({
   grammarMastery,
   vocabStats,
   streak,
-  readingLocked,
-  nonGrammarDrillsLocked,
   isAdmin,
 }: {
   grammarMastery: GrammarMasteryState;
   vocabStats: { words: number; mastered: number; bestStreak: number; flashcards: number };
   streak: number;
-  readingLocked: boolean;
-  nonGrammarDrillsLocked: boolean;
   isAdmin: boolean;
 }) {
   const grammarBarPct =
     grammarMastery.total > 0
       ? Math.round((grammarMastery.mastered / grammarMastery.total) * 100)
       : 0;
+  const locked = {
+    reading: isDrillUnderConstruction("reading"),
+    wordScan: isDrillUnderConstruction("word-scan"),
+    targetedMath: isDrillUnderConstruction("targeted-math"),
+    aiMath: isDrillUnderConstruction("ai-math"),
+    vocab: isDrillUnderConstruction("vocab"),
+    flashcards: isDrillUnderConstruction("flashcards"),
+  };
+  const hasLockedDrills = Object.values(locked).some(Boolean);
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-6 pb-12 pt-[30px]">
@@ -87,11 +93,11 @@ export function DrillCatalog({
         <span className="text-[13px] text-navy/50">Earn XP. Build streaks. Master one pattern at a time.</span>
       </div>
 
-      {nonGrammarDrillsLocked && (
+      {hasLockedDrills && (
         <div className="mb-6 rounded-xl border border-gold/40 bg-gold/[0.07] px-4 py-3 text-[13px] font-semibold leading-5 text-navy/70">
           {isAdmin
             ? "Some drills are locked for students — you can still open them as an admin."
-            : "Grammar and Reading Comprehension are available now. Other drills are under construction and will return soon."}
+            : "Targeted Math, AI Math, and Word Scan are still under construction. Vocabulary and Flashcards are available now."}
         </div>
       )}
 
@@ -170,7 +176,7 @@ export function DrillCatalog({
       <CategoryHeader title="Reading" />
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
         <LockableCard
-          locked={readingLocked && !isAdmin}
+          locked={locked.reading && !isAdmin}
           title="Reading Comprehension"
         >
           <div className={cardBox}>
@@ -211,7 +217,7 @@ export function DrillCatalog({
           </div>
         </LockableCard>
 
-        <LockableCard locked={nonGrammarDrillsLocked && !isAdmin} title="Word Scan Drill">
+        <LockableCard locked={locked.wordScan && !isAdmin} title="Word Scan Drill">
           <div className={cardBox}>
           <div className="flex items-center gap-3.5">
             <IconTile name="scan" />
@@ -255,7 +261,7 @@ export function DrillCatalog({
       <CategoryHeader title="Math" />
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MathCard
-          locked={nonGrammarDrillsLocked && !isAdmin}
+          locked={locked.targetedMath && !isAdmin}
           name="target"
           tier="Medium"
           tierClass="text-success-600"
@@ -269,7 +275,7 @@ export function DrillCatalog({
           ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
         />
         <MathCard
-          locked={nonGrammarDrillsLocked && !isAdmin}
+          locked={locked.targetedMath && !isAdmin}
           name="target"
           tier="Hard"
           tierClass="text-danger-600"
@@ -283,7 +289,7 @@ export function DrillCatalog({
           ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
         />
         <MathCard
-          locked={nonGrammarDrillsLocked && !isAdmin}
+          locked={locked.aiMath && !isAdmin}
           name="aimath"
           tier="Beta"
           tierClass="text-brand-600"
@@ -302,7 +308,7 @@ export function DrillCatalog({
       {/* Vocabulary */}
       <CategoryHeader title="Vocabulary" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <LockableCard locked={nonGrammarDrillsLocked && !isAdmin} title="Vocab Drill">
+        <LockableCard locked={locked.vocab && !isAdmin} title="Vocab Drill">
           <div className={cardBox}>
           <div className="flex items-center gap-3.5">
             <IconTile name="vocab" />
@@ -339,7 +345,7 @@ export function DrillCatalog({
           </div>
         </LockableCard>
 
-        <LockableCard locked={nonGrammarDrillsLocked && !isAdmin} title="Vocab Flashcards">
+        <LockableCard locked={locked.flashcards && !isAdmin} title="Vocab Flashcards">
           <div className={cardBox}>
           <div className="flex items-center gap-3.5">
             <IconTile name="flashcards" />

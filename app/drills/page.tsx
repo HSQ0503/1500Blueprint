@@ -10,7 +10,6 @@ import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getHubState, needsOnboarding } from "@/lib/gamification/state";
 import { loadGrammarMastery } from "@/lib/drills/progress";
-import { isDrillUnderConstruction, NON_GRAMMAR_DRILLS_LOCKED } from "@/lib/flags";
 import { loadVocabDashboard } from "@/lib/drills/vocab.server";
 
 export const metadata = {
@@ -65,8 +64,6 @@ export default async function DrillsPage() {
           flashcards: vocabState.flashcardCount,
         }}
         streak={hub.player.streak}
-        readingLocked={isDrillUnderConstruction("reading")}
-        nonGrammarDrillsLocked={NON_GRAMMAR_DRILLS_LOCKED}
         isAdmin={nav.isAdmin}
       />
 

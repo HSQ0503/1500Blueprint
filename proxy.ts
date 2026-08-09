@@ -62,8 +62,8 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Only Grammar is student-ready. Keep the remaining drill players behind
-  // the hub's under-construction state while preserving admin QA access.
+  // Keep unfinished drill players behind the hub's under-construction state
+  // while preserving admin QA access.
   if (!isAdmin && pathname.startsWith("/drills/")) {
     const drillSlug = pathname.split("/")[2] ?? "";
     if (isDrillUnderConstruction(drillSlug)) {
@@ -74,7 +74,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Practice Tests 1-5 are under construction; Test 6 is public to students.
+  // Practice Tests 1-5 are under construction; Tests 6 and 7 are public to students.
   // API bodies are checked inside their route handlers because Proxy cannot
   // determine the requested test slug without consuming the request body.
   if (!isAdmin && pathname.startsWith("/practice-test/")) {

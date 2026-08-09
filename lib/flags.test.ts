@@ -3,15 +3,14 @@ import test from "node:test";
 import {
   isDrillUnderConstruction,
   isPracticeTestUnderConstruction,
-  NON_GRAMMAR_DRILLS_LOCKED,
 } from "./flags";
 
-test("keeps Grammar and Reading available while locking unfinished drills", () => {
-  assert.equal(NON_GRAMMAR_DRILLS_LOCKED, true);
-  assert.equal(isDrillUnderConstruction("grammar"), false);
-  assert.equal(isDrillUnderConstruction("reading"), false);
+test("publishes Grammar, Reading, Vocab, and Flashcards while locking unfinished drills", () => {
+  for (const slug of ["grammar", "reading", "vocab", "flashcards"]) {
+    assert.equal(isDrillUnderConstruction(slug), false, slug);
+  }
 
-  for (const slug of ["targeted-math", "word-scan", "vocab", "flashcards", "ai-math"]) {
+  for (const slug of ["targeted-math", "word-scan", "ai-math"]) {
     assert.equal(isDrillUnderConstruction(slug), true, slug);
   }
 });
