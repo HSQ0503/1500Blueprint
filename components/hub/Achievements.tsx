@@ -9,7 +9,7 @@ import type {
 import { ChevronRightIcon } from "@/components/shell/icons";
 
 // One distinct accent per family so the row reads as seven different things, not
-// thirty-eight identical shields.
+// sixty-five identical shields.
 const CAT_COLOR: Record<AchievementCategory, string> = {
   xp: "#e0a100",
   level: "#3fa9f5",

@@ -167,7 +167,7 @@ function tier(
   }));
 }
 
-// 38 achievements across tiered families. Order = display order on the hub.
+// 65 achievements across tiered families. Order = display order on the hub.
 export const ACHIEVEMENTS: Achievement[] = [
   ...tier("xp", "xp", GLYPH.star, "xp", [
     { n: 100, label: "First Points", desc: "Earn your first 100 XP." },
@@ -178,6 +178,11 @@ export const ACHIEVEMENTS: Achievement[] = [
     { n: 5000, label: "Five Thousand", desc: "Reach 5,000 total XP." },
     { n: 10000, label: "Ten Thousand Club", desc: "Reach 10,000 total XP." },
     { n: 25000, label: "XP Legend", desc: "Reach 25,000 total XP." },
+    { n: 50000, label: "XP Titan", desc: "Reach 50,000 total XP." },
+    { n: 75000, label: "XP Overlord", desc: "Reach 75,000 total XP." },
+    { n: 100000, label: "Six-Figure Scholar", desc: "Reach 100,000 total XP." },
+    { n: 150000, label: "XP Ascendant", desc: "Reach 150,000 total XP." },
+    { n: 250000, label: "XP Immortal", desc: "Reach 250,000 total XP." },
   ]),
   ...tier("level", "level", GLYPH.rocket, "level", [
     { n: 2, label: "Level Up", desc: "Reach level 2." },
@@ -186,6 +191,11 @@ export const ACHIEVEMENTS: Achievement[] = [
     { n: 15, label: "Halfway Hero", desc: "Reach level 15." },
     { n: 20, label: "Twenty Strong", desc: "Reach level 20." },
     { n: 25, label: "Apex", desc: "Reach level 25." },
+    { n: 30, label: "Ascended", desc: "Reach level 30." },
+    { n: 40, label: "Vanguard", desc: "Reach level 40." },
+    { n: 50, label: "Half Century", desc: "Reach level 50." },
+    { n: 75, label: "Grandmaster", desc: "Reach level 75." },
+    { n: 100, label: "Centennial", desc: "Reach level 100." },
   ]),
   ...tier("streak", "streak", GLYPH.flame, "streakLongest", [
     { n: 2, label: "Back Again", desc: "Build a 2-day streak." },
@@ -195,6 +205,9 @@ export const ACHIEVEMENTS: Achievement[] = [
     { n: 30, label: "Monthly Master", desc: "Build a 30-day streak." },
     { n: 60, label: "Unbreakable", desc: "Build a 60-day streak." },
     { n: 100, label: "Centurion", desc: "Build a 100-day streak." },
+    { n: 150, label: "Relentless", desc: "Build a 150-day streak." },
+    { n: 200, label: "Iron Will", desc: "Build a 200-day streak." },
+    { n: 300, label: "Blueprinted", desc: "Build a 300-day streak." },
   ]),
   ...tier("drills", "drills", GLYPH.hash, "drillsCompleted", [
     { n: 1, label: "First Drill", desc: "Complete your first drill." },
@@ -204,17 +217,25 @@ export const ACHIEVEMENTS: Achievement[] = [
     { n: 100, label: "Century Club", desc: "Complete 100 drills." },
     { n: 250, label: "Drill Sergeant", desc: "Complete 250 drills." },
     { n: 500, label: "Five Hundred", desc: "Complete 500 drills." },
+    { n: 750, label: "Seven-Fifty", desc: "Complete 750 drills." },
+    { n: 1000, label: "1k", desc: "Complete 1,000 drills." },
+    { n: 2500, label: "Drill Machine", desc: "Complete 2,500 drills." },
+    { n: 5000, label: "Drill Legend", desc: "Complete 5,000 drills." },
   ]),
   ...tier("tests", "tests", GLYPH.cap, "testsCompleted", [
     { n: 1, label: "Test Drive", desc: "Finish a full practice test." },
     { n: 3, label: "Triple", desc: "Finish 3 practice tests." },
     { n: 5, label: "High Five", desc: "Finish 5 practice tests." },
     { n: 10, label: "Marathoner", desc: "Finish 10 practice tests." },
+    { n: 15, label: "Test Titan", desc: "Finish 15 practice tests." },
+    { n: 20, label: "Twenty Tests", desc: "Finish 20 practice tests." },
   ]),
   ...tier("goals", "goals", GLYPH.target, "dailyGoalsHit", [
     { n: 1, label: "Goal Getter", desc: "Hit your daily goal once." },
     { n: 7, label: "Goal Streak", desc: "Hit your daily goal 7 times." },
     { n: 30, label: "Goal Machine", desc: "Hit your daily goal 30 times." },
+    { n: 60, label: "Goal Champion", desc: "Hit your daily goal 60 times." },
+    { n: 90, label: "Goal Legend", desc: "Hit your daily goal 90 times." },
   ]),
   {
     id: "perfect-drill",
@@ -225,21 +246,29 @@ export const ACHIEVEMENTS: Achievement[] = [
     test: (s) => s.perfectDrills >= 1,
   },
   {
-    id: "score-1400",
-    label: "1400 Club",
-    description: "Score 1400+ on a practice test.",
+    id: "perfect-10",
+    label: "Marksman",
+    description: "Score 100 on 10 drills.",
     category: "milestone",
-    glyph: GLYPH.diamond,
-    test: (s) => s.bestTestScore >= 1400,
+    glyph: GLYPH.target,
+    test: (s) => s.perfectDrills >= 10,
   },
   {
-    id: "score-1500",
-    label: "1500 Club",
-    description: "Score 1500+ on a practice test.",
+    id: "perfect-50",
+    label: "Deadeye",
+    description: "Score 100 on 50 drills.",
     category: "milestone",
-    glyph: GLYPH.diamond,
-    test: (s) => s.bestTestScore >= 1500,
+    glyph: GLYPH.target,
+    test: (s) => s.perfectDrills >= 50,
   },
+  ...tier("score", "milestone", GLYPH.diamond, "bestTestScore", [
+    { n: 1000, label: "Getting There", desc: "Score 1000+ on a practice test." },
+    { n: 1200, label: "Solid Score", desc: "Score 1200+ on a practice test." },
+    { n: 1300, label: "Great Score", desc: "Score 1300+ on a practice test." },
+    { n: 1400, label: "1400 Club", desc: "Score 1400+ on a practice test." },
+    { n: 1500, label: "1500 Club", desc: "Score 1500+ on a practice test." },
+    { n: 1600, label: "Scott's Disciple", desc: "Score a 1600 on a practice test." },
+  ]),
 ];
 
 // Family metadata for the achievements UI (display order + labels). Icons and

@@ -34,7 +34,7 @@ export function OnboardingTour({ firstName, dailyTarget }: { firstName: string; 
     {
       emoji: "🏆",
       title: "Compete and collect",
-      body: "Climb the weekly leaderboard (it resets every Sunday) and unlock 38 achievement badges as you hit milestones. Now go earn some XP.",
+      body: "Climb the weekly leaderboard (it resets every Sunday) and unlock 65 achievement badges as you hit milestones. Now go earn some XP.",
     },
   ];
 
