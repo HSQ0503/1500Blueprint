@@ -382,7 +382,7 @@ export function VocabDrill({
                 aria-hidden="true"
                 className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${autoAdd ? "bg-success" : "bg-navy/20"}`}
               >
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${autoAdd ? "translate-x-5" : "translate-x-0.5"}`} />
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] ${autoAdd ? "left-[22px]" : "left-0.5"}`} />
               </span>
               <span className={`w-6 text-left ${autoAdd ? "text-success-600" : "text-navy/45"}`}>
                 {autoAdd ? "On" : "Off"}
