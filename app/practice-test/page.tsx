@@ -135,7 +135,7 @@ export default async function PracticeTestsPage() {
                       <Chip>4 modules</Chip>
                       <Chip>~2h 14m</Chip>
                       {locked ? (
-                        <span className="rounded-md bg-gold/15 px-2 py-[3px] text-[11px] font-bold text-gold-600">
+                        <span className="rounded-md bg-navy/10 px-2 py-[3px] text-[11px] font-bold text-navy/50">
                           Locked
                         </span>
                       ) : best ? (
@@ -152,7 +152,7 @@ export default async function PracticeTestsPage() {
                   <span
                     className={`ml-auto inline-flex flex-none items-center gap-1.5 rounded-lg px-4 py-[9px] text-[13.5px] font-bold ${
                       locked
-                        ? "border border-gold/35 bg-gold/[0.08] text-gold-600"
+                        ? "border border-navy/15 bg-navy/[0.04] text-navy/40"
                         : "bg-navy text-white transition-colors group-hover:bg-navy-700"
                     }`}
                   >
@@ -166,7 +166,7 @@ export default async function PracticeTestsPage() {
                   {locked ? (
                     <div
                       aria-disabled="true"
-                      className="flex items-center gap-[15px] rounded-xl border border-dashed border-navy/15 border-t-2 border-t-gold/50 bg-white/70 p-[18px]"
+                      className="flex items-center gap-[15px] rounded-xl border border-dashed border-navy/15 bg-navy/[0.03] p-[18px] opacity-70 grayscale"
                     >
                       {cardContent}
                     </div>
