@@ -19,10 +19,11 @@ test("does not turn unknown routes into construction redirects", () => {
   assert.equal(isDrillUnderConstruction("not-a-drill"), false);
 });
 
-test("makes Practice Tests 6 and 7 public while keeping Tests 1-5 locked", () => {
-  for (let number = 1; number <= 5; number++) {
+test("makes Practice Tests 1, 6, and 7 public while keeping Tests 2-5 locked", () => {
+  for (let number = 2; number <= 5; number++) {
     assert.equal(isPracticeTestUnderConstruction(`practice-test-${number}`), true);
   }
+  assert.equal(isPracticeTestUnderConstruction("practice-test-1"), false);
   assert.equal(isPracticeTestUnderConstruction("practice-test-6"), false);
   assert.equal(isPracticeTestUnderConstruction("practice-test-7"), false);
   assert.equal(isPracticeTestUnderConstruction("completed"), false);
