@@ -6,7 +6,11 @@ import { getMembership } from "@/lib/auth/stripe";
 import { createLoginToken } from "@/lib/auth/tokens";
 import { sendMagicLink } from "@/lib/auth/email";
 import { signSession, sessionCookieOptions } from "@/lib/auth/session";
-import { recordLogin } from "@/lib/auth/users";
+import {
+  COMPLIMENTARY_ACCESS_PLAN,
+  hasComplimentaryAccess,
+  recordLogin,
+} from "@/lib/auth/users";
 
 const GENERIC_MESSAGE =
   "If that email has an active membership, a login link is on its way.";
@@ -61,7 +65,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const membership = await getMembership(email);
+    const complimentary = await hasComplimentaryAccess(email);
+    const membership = complimentary
+      ? { active: true, plan: COMPLIMENTARY_ACCESS_PLAN }
+      : await getMembership(email);
     if (membership.active) {
       const raw = await createLoginToken(email, membership.plan);
       const base = appBaseUrl(new URL(request.url).origin);

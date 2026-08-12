@@ -8,7 +8,7 @@ create table if not exists public.login_tokens (
   id          text primary key default gen_random_uuid()::text,
   email       text not null,
   token_hash  text not null,                 -- sha256(raw token); the raw token is emailed, never stored
-  plan        text,                          -- captured from Stripe at request time
+  plan        text,                          -- captured from Stripe or a complimentary access grant
   expires_at  timestamptz not null,
   consumed_at timestamptz,
   created_at  timestamptz not null default now()

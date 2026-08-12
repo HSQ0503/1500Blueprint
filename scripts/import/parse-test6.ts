@@ -161,14 +161,14 @@ function moduleFromHeading(
   section: Test6Section,
   line: string,
 ): Omit<Test6Module, "section" | "label" | "questions"> | null {
-  const normalized = line.toLowerCase().replace(/\s+/g, " ").trim();
-  if (normalized === "baseline" || normalized === "module 1") {
+  const normalized = line.toLowerCase().replace(/[,]+/g, " ").replace(/\s+/g, " ").trim();
+  if (normalized === "baseline" || normalized === "baseline module" || normalized === "module 1") {
     return { order: 1, variant: null };
   }
-  if (normalized === "easy" || normalized === "module 2 easy") {
+  if (normalized === "easy" || normalized === "easy module" || normalized === "module 2 easy") {
     return { order: 2, variant: "easy" };
   }
-  if (normalized === "hard" || normalized === "module 2 hard") {
+  if (normalized === "hard" || normalized === "hard module" || normalized === "module 2 hard") {
     return { order: 2, variant: "hard" };
   }
   return null;
@@ -393,9 +393,12 @@ function parseQuestionBlock(block: string[], module: Test6Module, position: numb
   };
 }
 
-export function parseTest6Lines(lines: string[]): Test6Module[] {
+export function parseTest6Lines(
+  lines: string[],
+  options: { initialSection?: Test6Section } = {},
+): Test6Module[] {
   const modules: Test6Module[] = [];
-  let section: Test6Section | null = null;
+  let section: Test6Section | null = options.initialSection ?? null;
   let current: Test6Module | null = null;
   let block: string[] | null = null;
 
@@ -442,9 +445,12 @@ export function parseTest6Lines(lines: string[]): Test6Module[] {
   return modules;
 }
 
-export async function parseTest6Docx(docxPath: string): Promise<Test6ParseResult> {
+export async function parseTest6Docx(
+  docxPath: string,
+  options: { initialSection?: Test6Section } = {},
+): Promise<Test6ParseResult> {
   const { lines, images } = await docxToContent(docxPath);
-  const modules = parseTest6Lines(lines);
+  const modules = parseTest6Lines(lines, options);
   return { modules, images };
 }
 

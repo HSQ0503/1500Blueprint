@@ -10,6 +10,8 @@ import type { Highlight } from "@/components/test/HighlightablePassage";
 export type SavedSession = {
   state: TestState;
   highlights: Record<string, Highlight[]>;
+  savedAt?: string;
+  loadedAt?: string;
 };
 
 // A late in-flight save must not resurrect a just-finished test's resume row.
@@ -23,6 +25,7 @@ export async function saveTestSession(
   session: SavedSession,
 ): Promise<void> {
   const db = supabaseAdmin();
+  const savedAt = new Date().toISOString();
   const { data: recent } = await db
     .from("test_attempts")
     .select("completed_at")
@@ -37,7 +40,7 @@ export async function saveTestSession(
   const { error } = await db
     .from("test_sessions")
     .upsert(
-      { email, test_slug: slug, state: session, updated_at: new Date().toISOString() },
+      { email, test_slug: slug, state: { ...session, savedAt }, updated_at: savedAt },
       { onConflict: "email,test_slug" },
     );
   if (error) throw new Error(`saveTestSession failed: ${error.message}`);
@@ -49,11 +52,17 @@ export async function loadTestSession(
 ): Promise<SavedSession | null> {
   const { data } = await supabaseAdmin()
     .from("test_sessions")
-    .select("state")
+    .select("state,updated_at")
     .eq("email", email)
     .eq("test_slug", slug)
-    .maybeSingle<{ state: SavedSession }>();
-  return data?.state ?? null;
+    .maybeSingle<{ state: SavedSession; updated_at: string }>();
+  return data?.state
+    ? {
+        ...data.state,
+        savedAt: data.state.savedAt ?? data.updated_at,
+        loadedAt: new Date().toISOString(),
+      }
+    : null;
 }
 
 export async function clearTestSession(email: string, slug: string): Promise<void> {

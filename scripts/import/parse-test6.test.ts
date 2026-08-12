@@ -161,3 +161,47 @@ test("does not mistake an instruction beginning with Answer for an answer marker
   assert.equal(question.prompt, "What is x?");
   assert.deepEqual(question.acceptedAnswers, ["5"]);
 });
+
+test("parses an R&W-only source with alternate module headings", () => {
+  const modules = parseTest6Lines(
+    [
+      "Baseline Module",
+      "1)",
+      "Which choice is correct? EASY, HUMANITIES",
+      "A) One",
+      "B) Two",
+      "C) Three",
+      "D) Four",
+      "EXPLANATION",
+      "Choice B is the best answer because it is two.",
+      "Module 2, Easy",
+      "1)",
+      "Which choice is correct? MEDIUM, SCIENCE",
+      "A) One",
+      "B) Two",
+      "C) Three",
+      "D) Four",
+      "EXPLANATION",
+      "Choice C is the best answer because it is three.",
+      "Hard Module",
+      "1)",
+      "Which choice is correct? HARD, LITERATURE",
+      "A) One",
+      "B) Two",
+      "C) Three",
+      "D) Four",
+      "EXPLANATION",
+      "Choice D is the best answer because it is four.",
+    ],
+    { initialSection: "rw" },
+  );
+
+  assert.deepEqual(
+    modules.map((module) => [module.section, module.order, module.variant, module.questions[0].correct]),
+    [
+      ["rw", 1, null, "B"],
+      ["rw", 2, "easy", "C"],
+      ["rw", 2, "hard", "D"],
+    ],
+  );
+});

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { sampleTest } from "./sampleTest";
-import { initialState, makeReducer, type TestState } from "./testState";
+import { initialState, makeReducer, reconcileElapsedTimer, type TestState } from "./testState";
 
 test("extended time adds 50% and a five-minute break between modules", () => {
   const reduce = makeReducer(sampleTest);
@@ -67,4 +67,36 @@ test("the reducer stores five grid-in characters plus an optional minus sign", (
 
   state = reduce(state, { type: "SELECT", questionId: gridQuestion.id, value: "-12.345" });
   assert.equal(state.answers[gridQuestion.id], "-12.34");
+});
+
+test("a resumed module timer subtracts wall-clock time spent away", () => {
+  const reduce = makeReducer(sampleTest);
+  const started = reduce(initialState(), { type: "START" });
+  const question = sampleTest.sections[0].module1.questions[0];
+  const restored = reconcileElapsedTimer(
+    sampleTest,
+    started,
+    "2026-08-11T00:00:00.000Z",
+    Date.parse("2026-08-11T00:00:25.000Z"),
+  );
+
+  assert.equal(restored.timeLeft, started.timeLeft - 25);
+  assert.equal(restored.perQuestionTime[question.id], 25);
+});
+
+test("a module that expires while away resumes at module over", () => {
+  const state: TestState = {
+    ...initialState(),
+    phase: "review",
+    timeLeft: 10,
+  };
+  const restored = reconcileElapsedTimer(
+    sampleTest,
+    state,
+    "2026-08-11T00:00:00.000Z",
+    Date.parse("2026-08-11T00:00:30.000Z"),
+  );
+
+  assert.equal(restored.timeLeft, 0);
+  assert.equal(restored.phase, "moduleOver");
 });
