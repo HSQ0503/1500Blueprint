@@ -1,0 +1,16 @@
+{
+  "name": "1500 Blueprint Drills",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "user": "ubuntu",
+  "install": "npm ci",
+  "start": "bash .cursor/scripts/start-services.sh",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev"
+    }
+  ],
+  "ports": [3000, 54321, 54323]
+}
